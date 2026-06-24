@@ -1,0 +1,221 @@
+.hero {
+  text-align: center;
+  padding: 4rem 1.5rem;
+  margin-bottom: 3rem;
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: radial-gradient(circle at top, rgba(255, 143, 163, 0.18), transparent 70%), #ffffff;
+  border: 2px solid var(--text-primary);
+  box-shadow: var(--shadow-pop);
+}
+
+.heroBg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='%231e1f4b' fill-opacity='0.02'%3E%3Cpath fill-rule='evenodd' d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zM11 61c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm74-2c0 3.866-3.134 7-7 7s-7-3.134-7-7 3.134-7 7-7 7 3.134 7 7zM44 74c0 3.866-3.134 7-7 7s-7-3.134-7-7 3.134-7 7-7 7 3.134 7 7z'/%3E%3C/g%3E%3C/svg%3E");
+  z-index: 0;
+}
+
+.heroTitle {
+  font-size: 3rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  margin-bottom: 1rem;
+  z-index: 1;
+  position: relative;
+  color: var(--text-primary);
+}
+
+.heroText {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  max-width: 600px;
+  margin: 0 auto;
+  z-index: 1;
+  position: relative;
+  font-weight: 700;
+}
+
+.section {
+  margin-bottom: 3.5rem;
+}
+
+.sectionTitle {
+  font-size: 1.5rem;
+  font-weight: 900;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.favStar {
+  color: #ffd700;
+  filter: drop-shadow(2px 2px 0px var(--text-primary));
+}
+
+.liveIndicator {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: var(--accent-pink);
+  border: 2px solid var(--text-primary);
+  box-shadow: 2px 2px 0px var(--text-primary);
+  animation: pulseGlow 1.5s infinite;
+}
+
+.scheduleIcon {
+  font-size: 1.25rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.emptyBox {
+  padding: 3rem 1.5rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--text-primary);
+  background: #ffffff;
+  box-shadow: var(--shadow-pop);
+  font-weight: 700;
+}
+
+.errorCard {
+  background: rgba(255, 143, 163, 0.1);
+  border: 2px solid var(--text-primary);
+  color: var(--text-primary);
+  padding: 1rem 1.5rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 2rem;
+  text-align: center;
+  box-shadow: var(--shadow-pop);
+  font-weight: 700;
+}
+
+/* スケルトンローディング */
+.skeletonContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+}
+
+.skeletonSection {
+  width: 100%;
+}
+
+.skeletonTitle {
+  width: 200px;
+  height: 24px;
+  background: rgba(30, 31, 75, 0.05);
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+  animation: loadingAnim 1.5s infinite ease-in-out;
+}
+
+.skeletonGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.skeletonCard {
+  background: #ffffff;
+  border: 2px solid var(--text-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-pop);
+  height: 280px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.skeletonThumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: rgba(30, 31, 75, 0.05);
+  animation: loadingAnim 1.5s infinite ease-in-out;
+  border-bottom: 2px solid var(--text-primary);
+}
+
+.skeletonBody {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex-grow: 1;
+}
+
+.skeletonLine {
+  width: 100%;
+  height: 16px;
+  background: rgba(30, 31, 75, 0.05);
+  border-radius: 4px;
+  animation: loadingAnim 1.5s infinite ease-in-out;
+}
+
+.skeletonLineShort {
+  width: 60%;
+  height: 14px;
+  background: rgba(30, 31, 75, 0.03);
+  border-radius: 4px;
+  animation: loadingAnim 1.5s infinite ease-in-out;
+}
+
+@keyframes loadingAnim {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 2px 2px 0px var(--text-primary);
+  }
+  50% {
+    transform: scale(1.15);
+    box-shadow: 3px 3px 0px var(--text-primary);
+  }
+}
+
+@media (max-width: 640px) {
+  .hero {
+    padding: 2.5rem 1rem;
+    margin-bottom: 2rem;
+  }
+  
+  .heroTitle {
+    font-size: 2rem;
+  }
+  
+  .heroText {
+    font-size: 0.95rem;
+  }
+  
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .skeletonGrid {
+    grid-template-columns: 1fr;
+  }
+}

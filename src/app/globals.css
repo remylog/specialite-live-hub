@@ -1,0 +1,242 @@
+@import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap');
+
+:root {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #ffffff;
+  
+  --text-primary: #1e1f4b;
+  --text-secondary: #5e6293;
+  --text-muted: #8d92be;
+  
+  --accent-pink: #ff8fa3;
+  --accent-blue: #4cc9f0;
+  --accent-yellow: #fff275;
+  --accent-purple: #7209b7;
+  
+  --accent-pink-rgb: 255, 143, 163;
+  --accent-blue-rgb: 76, 201, 240;
+  
+  --border-color: rgba(30, 31, 75, 0.08);
+  --border-hover: #ff8fa3;
+  
+  --glow-pink: 0 8px 24px rgba(255, 143, 163, 0.25);
+  --glow-blue: 0 8px 24px rgba(76, 201, 240, 0.25);
+  --shadow-pop: 4px 4px 0px #1e1f4b;
+  --shadow-pop-hover: 2px 2px 0px #1e1f4b;
+  --shadow-soft: 0 8px 30px rgba(30, 31, 75, 0.06);
+  
+  --font-sans: 'Zen Maru Gothic', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  
+  --radius-sm: 12px;
+  --radius-md: 20px;
+  --radius-lg: 28px;
+  
+  --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+/* スクロールバーのカスタマイズ */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(30, 31, 75, 0.1);
+  border-radius: 9999px;
+  border: 3px solid var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(30, 31, 75, 0.25);
+}
+
+/* レイアウト・コンテナ */
+.app-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 5rem;
+}
+
+/* タイポグラフィと共通装飾 */
+.gradient-text {
+  background: linear-gradient(135deg, #1e1f4b, var(--accent-pink));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-purple {
+  background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ガラスモーフィズム */
+.glass-panel {
+  background: var(--bg-card);
+  border: 2px solid var(--text-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-pop);
+  transition: var(--transition-smooth);
+}
+
+.glass-panel:hover {
+  background: var(--bg-card-hover);
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px #1e1f4b;
+}
+
+/* アニメーションキーフレーム */
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* バッジスタイル */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 9999px; /* 可愛いカプセル型に */
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: 2px solid #1e1f4b; /* はっきりとしたポップな黒ボーダー */
+  box-shadow: 2px 2px 0px #1e1f4b;
+  white-space: nowrap;
+}
+
+.badge-live {
+  background: #ff8fa3;
+  color: #1e1f4b;
+}
+
+.badge-live::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #1e1f4b;
+  animation: pulseGlow 1.2s infinite;
+}
+
+.badge-upcoming {
+  background: #fff275;
+  color: #1e1f4b;
+}
+
+.badge-past {
+  background: #e2e8f0;
+  color: #5e6293;
+  border-color: #5e6293;
+  box-shadow: 2px 2px 0px #5e6293;
+}
+
+/* ボタン共通 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 9999px; /* カプセル型 */
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-bounce);
+  border: 2px solid #1e1f4b;
+  text-decoration: none;
+  box-shadow: var(--shadow-pop);
+  background: #ffffff;
+  color: #1e1f4b;
+}
+
+.btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: var(--shadow-pop-hover);
+}
+
+.btn-primary {
+  background: #ff8fa3;
+  color: #1e1f4b;
+}
+
+.btn-primary:hover {
+  background: #ffb3c1;
+  transform: translateY(-2px);
+  box-shadow: 6px 6px 0px #1e1f4b;
+}
+
+.btn-secondary {
+  background: #ffffff;
+  color: #1e1f4b;
+}
+
+.btn-secondary:hover {
+  background: #f1f5f9;
+  transform: translateY(-2px);
+  box-shadow: 6px 6px 0px #1e1f4b;
+}
+
+/* ページ見出し */
+.page-title {
+  font-size: 2.25rem;
+  font-weight: 900;
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  letter-spacing: -0.02em;
+  color: #1e1f4b;
+}
+
+.page-title span {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}

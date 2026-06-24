@@ -1,0 +1,195 @@
+.controlSection {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 2.5rem;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.groupTabs {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.5rem 0.25rem; /* ホバー時のY軸の移動やシャドウのために上下に十分なパディングを追加 */
+  margin: -0.5rem -0.25rem; /* パディング分コンテナを広げる */
+  scrollbar-width: none; /* Firefox用 */
+}
+
+.groupTabs::-webkit-scrollbar {
+  display: none; /* Safari/Chrome用 */
+}
+
+.tabBtn {
+  background: #ffffff;
+  border: 2px solid var(--text-primary);
+  color: var(--text-primary);
+  padding: 0.5rem 1.25rem;
+  border-radius: 9999px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition-bounce);
+  box-shadow: 2px 2px 0px var(--text-primary);
+}
+
+.tabBtn:hover {
+  background: #f1f5f9;
+  transform: translateY(-2px);
+  box-shadow: 4px 4px 0px var(--text-primary);
+}
+
+.activeTab {
+  background: var(--accent-pink) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--text-primary) !important;
+  box-shadow: 2px 2px 0px var(--text-primary) !important;
+}
+
+.activeTab:hover {
+  box-shadow: 4px 4px 0px var(--text-primary) !important;
+}
+
+.searchWrapper {
+  position: relative;
+  width: 300px;
+}
+
+.searchInput {
+  background: #ffffff;
+  border: 2px solid var(--text-primary);
+  color: var(--text-primary);
+  padding: 0.65rem 1rem;
+  border-radius: var(--radius-sm);
+  outline: none;
+  font-size: 0.9rem;
+  font-weight: 700;
+  width: 100%;
+  padding-right: 2.25rem;
+  transition: var(--transition-smooth);
+}
+
+.searchInput:focus {
+  border-color: var(--accent-pink);
+  box-shadow: 2px 2px 0px var(--text-primary);
+}
+
+.clearBtn {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.15rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clearBtn:hover {
+  color: var(--text-primary);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 2rem;
+  margin-bottom: 4rem;
+}
+
+.noResults {
+  padding: 4rem 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--text-primary);
+  background: #ffffff;
+  box-shadow: var(--shadow-pop);
+  font-weight: 700;
+}
+
+.errorCard {
+  background: rgba(255, 143, 163, 0.1);
+  border: 2px solid var(--text-primary);
+  color: var(--text-primary);
+  padding: 1rem 1.5rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 2rem;
+  text-align: center;
+  box-shadow: var(--shadow-pop);
+  font-weight: 700;
+}
+
+/* スケルトン */
+.skeletonGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 2rem;
+  margin-bottom: 4rem;
+}
+
+.skeletonCard {
+  background: #ffffff;
+  border: 2px solid var(--text-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-pop);
+  height: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 1rem;
+}
+
+.skeletonAvatar {
+  width: 6.5rem;
+  height: 6.5rem;
+  border-radius: 50%;
+  background: rgba(30, 31, 75, 0.05);
+  animation: loadingAnim 1.5s infinite ease-in-out;
+}
+
+.skeletonName {
+  width: 120px;
+  height: 20px;
+  background: rgba(30, 31, 75, 0.05);
+  border-radius: 4px;
+  animation: loadingAnim 1.5s infinite ease-in-out;
+}
+
+.skeletonSub {
+  width: 80px;
+  height: 14px;
+  background: rgba(30, 31, 75, 0.03);
+  border-radius: 4px;
+  animation: loadingAnim 1.5s infinite ease-in-out;
+}
+
+@keyframes loadingAnim {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+@media (max-width: 768px) {
+  .controlSection {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 1rem;
+  }
+  
+  .searchWrapper {
+    width: 100%;
+  }
+  
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1.5rem;
+  }
+}

@@ -1,0 +1,332 @@
+.backBtn {
+  margin-bottom: 2rem;
+  align-self: flex-start;
+}
+
+.profileHeader {
+  padding: 2.5rem;
+  margin-bottom: 3rem;
+  border-radius: var(--radius-lg);
+  background: radial-gradient(circle at top, rgba(255, 143, 163, 0.15), transparent 70%), #ffffff;
+  border: 2px solid var(--text-primary);
+  box-shadow: var(--shadow-pop);
+}
+
+.profileMain {
+  display: flex;
+  gap: 2.5rem;
+  align-items: flex-start;
+}
+
+.avatar {
+  width: 9rem;
+  height: 9rem;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--text-primary);
+  box-shadow: 0 0 0 3px #ffffff, 0 0 0 5px var(--accent-pink);
+  flex-shrink: 0;
+}
+
+.profileMeta {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.name {
+  font-size: 2.25rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.groupBadge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: rgba(76, 201, 240, 0.25);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  border: 2px solid var(--text-primary);
+  box-shadow: 2px 2px 0px var(--text-primary);
+}
+
+.englishName {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--accent-pink);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 1.25rem;
+}
+
+.description {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 1.75rem;
+  max-width: 700px;
+  font-weight: 500;
+}
+
+.actionRow {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.favBtn {
+  background: #ffffff;
+  color: var(--text-primary);
+  border: 2px solid var(--text-primary);
+  padding: 0.6rem 1.2rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  box-shadow: 3px 3px 0px var(--text-primary);
+  transition: var(--transition-bounce);
+}
+
+.favBtn:hover {
+  background: #f1f5f9;
+  transform: translateY(-2px);
+  box-shadow: 5px 5px 0px var(--text-primary);
+}
+
+.favBtnActive {
+  background: linear-gradient(135deg, #ffd700, #ffae00);
+  color: var(--text-primary);
+  border: 2px solid var(--text-primary);
+  padding: 0.6rem 1.2rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 900;
+  box-shadow: 3px 3px 0px var(--text-primary);
+  transition: var(--transition-bounce);
+}
+
+.favBtnActive:hover {
+  transform: translateY(-2px);
+  box-shadow: 5px 5px 0px var(--text-primary);
+}
+
+.starIcon {
+  font-size: 1.1rem;
+}
+
+.snsLinks {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.snsLink {
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border: 2px solid var(--text-primary);
+  padding: 0.5rem 1.2rem;
+  border-radius: 9999px;
+  background: #ffffff;
+  box-shadow: 2px 2px 0px var(--text-primary);
+  transition: var(--transition-bounce);
+}
+
+.snsLink:hover {
+  color: var(--text-primary);
+  background: #f1f5f9;
+  transform: translateY(-2px);
+  box-shadow: 4px 4px 0px var(--text-primary);
+}
+
+.snsLink:hover[title="YouTube チャンネル"] {
+  background: rgba(255, 0, 0, 0.05);
+}
+
+.snsLink:hover[title="公式 X (Twitter)"] {
+  background: rgba(29, 161, 242, 0.05);
+}
+
+/* 動画セクション */
+.videoSection {
+  margin-top: 1rem;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 2px solid var(--text-primary);
+  margin-bottom: 2rem;
+  gap: 2rem;
+}
+
+.tab {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  font-weight: 700;
+  padding: 0.75rem 0.25rem;
+  cursor: pointer;
+  position: relative;
+  transition: var(--transition-smooth);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tab:hover {
+  color: var(--accent-pink);
+}
+
+.activeTab {
+  color: var(--text-primary) !important;
+  font-weight: 900;
+}
+
+.activeTab::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent-pink);
+  border-top: 1px solid var(--text-primary);
+  border-bottom: 1px solid var(--text-primary);
+}
+
+.tabDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--accent-pink);
+  border: 1px solid var(--text-primary);
+  animation: pulseGlow 1.5s infinite;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 4rem;
+}
+
+.emptyBox {
+  padding: 4rem 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--text-primary);
+  background: #ffffff;
+  box-shadow: var(--shadow-pop);
+  font-weight: 700;
+}
+
+.errorCard {
+  background: rgba(255, 143, 163, 0.1);
+  border: 2px solid var(--text-primary);
+  color: var(--text-primary);
+  padding: 1rem 1.5rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 2rem;
+  text-align: center;
+  box-shadow: var(--shadow-pop);
+  font-weight: 700;
+}
+
+/* スケルトン */
+.skeletonHeader {
+  display: flex;
+  gap: 2.5rem;
+  align-items: center;
+  padding: 2.5rem;
+  background: #ffffff;
+  border: 2px solid var(--text-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+}
+
+.skeletonAvatar {
+  width: 9rem;
+  height: 9rem;
+  border-radius: 50%;
+  background: rgba(30, 31, 75, 0.05);
+  animation: loadingAnim 1.5s infinite ease-in-out;
+}
+
+.skeletonMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  flex-grow: 1;
+}
+
+.skeletonName {
+  width: 250px;
+  height: 32px;
+  background: rgba(30, 31, 75, 0.05);
+  border-radius: 4px;
+  animation: loadingAnim 1.5s infinite ease-in-out;
+}
+
+.skeletonText {
+  width: 80%;
+  height: 16px;
+  background: rgba(30, 31, 75, 0.03);
+  border-radius: 4px;
+  animation: loadingAnim 1.5s infinite ease-in-out;
+}
+
+@keyframes loadingAnim {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+@media (max-width: 768px) {
+  .profileMain {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1.5rem;
+  }
+  
+  .profileHeader {
+    padding: 1.5rem;
+  }
+  
+  .actionRow {
+    justify-content: center;
+  }
+  
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .tabs {
+    gap: 1rem;
+  }
+  
+  .tab {
+    font-size: 0.95rem;
+  }
+}

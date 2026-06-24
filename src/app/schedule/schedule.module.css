@@ -1,0 +1,263 @@
+.timelineWrapper {
+  position: relative;
+  padding: 2rem 0 4rem 1.5rem;
+  margin-top: 1rem;
+}
+
+.timelineLine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 8rem; /* 6.5rem + padding-left: 1.5rem */
+  width: 0;
+  border-left: 4px dashed var(--accent-pink);
+  margin-left: -2px;
+  z-index: 1;
+}
+
+.timelineItems {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.timelineItem {
+  display: flex;
+  align-items: flex-start;
+  position: relative;
+}
+
+.timeSection {
+  width: 6.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 1.25rem;
+  flex-shrink: 0;
+  padding-top: 1.25rem; /* カードの位置に合わせる */
+}
+
+.timeText {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  font-family: monospace;
+}
+
+.timeCircle {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 3px solid var(--text-primary);
+  position: absolute;
+  left: 6.5rem;
+  margin-left: -7px; /* 14pxの半分を中心にする */
+  z-index: 2;
+  transition: var(--transition-bounce);
+}
+
+.timelineItem:hover .timeCircle {
+  background: var(--accent-pink);
+  transform: scale(1.3);
+  box-shadow: 2px 2px 0px var(--text-primary);
+}
+
+.cardSection {
+  flex-grow: 1;
+  padding-left: 2rem;
+  max-width: 500px;
+}
+
+/* ライブ中アイテムの特別スタイル */
+.itemLive .timeCircle {
+  background: var(--accent-pink) !important;
+  border-color: var(--text-primary) !important;
+  box-shadow: 2px 2px 0px var(--text-primary) !important;
+  animation: pulseGlow 1.5s infinite;
+}
+
+.itemLive .timeText {
+  color: var(--accent-pink);
+  text-shadow: 1px 1px 0px var(--text-primary);
+}
+
+/* 配信予定アイテムの特別スタイル */
+.itemUpcoming .timeCircle {
+  border-color: var(--text-primary) !important;
+  background: var(--accent-yellow) !important;
+}
+
+.itemUpcoming .timeText {
+  color: var(--text-secondary);
+}
+
+/* 現在時刻ラインの特別スタイル */
+.nowLineItem {
+  display: flex;
+  align-items: center;
+  position: relative;
+  width: 100%;
+}
+
+.nowTimeSection {
+  width: 6.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 1.25rem;
+  flex-shrink: 0;
+}
+
+.nowTimeText {
+  font-size: 0.95rem;
+  font-weight: 900;
+  color: var(--accent-pink);
+  font-family: monospace;
+  text-shadow: 1px 1px 0px var(--text-primary);
+}
+
+.nowCircle {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-pink);
+  border: 3px solid var(--text-primary);
+  box-shadow: 2px 2px 0px var(--text-primary);
+  position: absolute;
+  left: 6.5rem;
+  margin-left: -8px; /* 16pxの半分を中心にする */
+  z-index: 4;
+  animation: pulseGlow 1.5s infinite;
+}
+
+.nowLineSection {
+  flex-grow: 1;
+  padding-left: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.nowLine {
+  flex-grow: 1;
+  height: 3px;
+  background: var(--accent-pink);
+  border-top: 1px solid var(--text-primary);
+  border-bottom: 1px solid var(--text-primary);
+}
+
+.nowLabel {
+  font-size: 0.75rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  border: 2px solid var(--text-primary);
+  background: var(--accent-pink);
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  letter-spacing: 0.05em;
+  box-shadow: 2px 2px 0px var(--text-primary);
+}
+
+.emptyBox {
+  padding: 4rem 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--text-primary);
+  background: #ffffff;
+  box-shadow: var(--shadow-pop);
+}
+
+.errorCard {
+  background: rgba(255, 143, 163, 0.1);
+  border: 2px solid var(--text-primary);
+  color: var(--text-primary);
+  padding: 1rem 1.5rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 2rem;
+  text-align: center;
+  box-shadow: var(--shadow-pop);
+  font-weight: 700;
+}
+
+/* スケルトン */
+.skeletonContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  padding-left: 6rem;
+}
+
+.skeletonRow {
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+}
+
+.skeletonTime {
+  width: 50px;
+  height: 20px;
+  background: rgba(30, 31, 75, 0.05);
+  border-radius: 4px;
+  animation: loadingAnim 1.5s infinite ease-in-out;
+}
+
+.skeletonCard {
+  width: 100%;
+  max-width: 500px;
+  height: 120px;
+  background: #ffffff;
+  border: 2px solid var(--text-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-pop);
+  animation: loadingAnim 1.5s infinite ease-in-out;
+}
+
+@keyframes loadingAnim {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 2px 2px 0px var(--text-primary);
+  }
+  50% {
+    transform: scale(1.15);
+    box-shadow: 3px 3px 0px var(--text-primary);
+  }
+}
+
+@media (max-width: 640px) {
+  .timelineLine {
+    left: 6rem; /* 4.5rem + 1.5rem */
+  }
+  
+  .timeSection, .nowTimeSection {
+    width: 4.5rem;
+    padding-right: 0.75rem;
+  }
+  
+  .timeText {
+    font-size: 0.9rem;
+  }
+  
+  .timeCircle {
+    left: 4.5rem;
+  }
+  
+  .nowCircle {
+    left: 4.5rem;
+  }
+  
+  .cardSection, .nowLineSection {
+    padding-left: 1.25rem;
+  }
+  
+  .skeletonContainer {
+    padding-left: 4rem;
+  }
+}
