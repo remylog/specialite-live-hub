@@ -12,12 +12,19 @@ function mapDbChannelToResponse(c: any) {
     youtube_handle: c.youtubeHandle || undefined,
     group: c.group || undefined,
     description: c.description || undefined,
+    subscriber_count: c.subscriberCount || 0,
+    subscriber_histories: c.subscriberHistories || [],
   };
 }
 
 export async function GET() {
   try {
     let channels = await prisma.channel.findMany({
+      include: {
+        subscriberHistories: {
+          orderBy: { date: 'asc' }
+        }
+      },
       orderBy: { createdAt: 'asc' }
     });
 

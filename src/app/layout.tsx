@@ -16,7 +16,14 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Specialite Live Hub",
   description: "すぺしゃりて（Specialite）のタレントの配信状態やアーカイブを確認できるファンメイドのHubサイトです。",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Specialite Hub",
+  },
 };
+
 
 export default function RootLayout({
   children,

@@ -10,6 +10,7 @@ import styles from './page.module.css';
 export default function Home() {
   const [liveStreams, setLiveStreams] = useState<Video[]>([]);
   const [upcomingStreams, setUpcomingStreams] = useState<Video[]>([]);
+  const [recommendations, setRecommendations] = useState<{ comment: string; video: Video }[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [loading, setLoading] = useState(true);
@@ -19,9 +20,15 @@ export default function Home() {
     try {
       setLoading(true);
       setError(null);
-      const data = await getLiveAndUpcoming();
-      setLiveStreams(data.live);
-      setUpcomingStreams(data.upcoming);
+      
+      const [streamsData, recsRes] = await Promise.all([
+        getLiveAndUpcoming(),
+        fetch('/api/recommend').then(r => r.ok ? r.json() : [])
+      ]);
+      
+      setLiveStreams(streamsData.live);
+      setUpcomingStreams(streamsData.upcoming);
+      setRecommendations(recsRes || []);
       setFavoriteIds(getFavorites());
     } catch (err) {
       setError('データの取得に失敗しました。');
@@ -95,6 +102,31 @@ export default function Home() {
         </div>
       ) : (
         <>
+          {/* Gemini AI おすすめアーカイブ */}
+          {recommendations.length > 0 && (
+            <section className={styles.aiSection}>
+              <div className={styles.aiHeader}>
+                <h2 className={styles.aiTitle}>
+                  🤖 Gemini AIが選ぶ昨日のイチオシ配信
+                </h2>
+                <span className={styles.aiBadge}>AI PICKUP</span>
+              </div>
+              <div className={styles.aiGrid}>
+                {recommendations.map(({ comment, video }) => (
+                  <div key={video.id} className={styles.aiCard} onClick={() => handleVideoClick(video)}>
+                    <div className={styles.aiCommentBox}>
+                      <span className={styles.aiCommentIcon}>✨</span>
+                      <span>{comment}</span>
+                    </div>
+                    <div className={styles.aiCardInner}>
+                      <VideoCard video={video} onClick={handleVideoClick} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* お気に入りメンバーの配信状況 */}
           {favoriteIds.length > 0 && (
             <section className={styles.section}>

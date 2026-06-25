@@ -8,17 +8,19 @@ generator client {
 }
 
 model Channel {
-  id            String   @id
-  name          String
-  englishName   String?
-  photo         String?
-  twitter       String?
-  youtubeHandle String?
-  group         String?
-  description   String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  videos        Video[]
+  id              String   @id
+  name            String
+  englishName     String?
+  photo           String?
+  twitter         String?
+  youtubeHandle   String?
+  group           String?
+  description     String?
+  subscriberCount Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  videos          Video[]
+  subscriberHistories SubscriberHistory[]
 }
 
 model Video {
@@ -36,7 +38,37 @@ model Video {
   cachedAt       DateTime @default(now())
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  recommendation Recommendation?
 
   @@index([channelId])
   @@index([status])
 }
+
+model Group {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Recommendation {
+  id        String   @id @default(uuid())
+  videoId   String   @unique
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  comment   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SubscriberHistory {
+  id              String   @id @default(uuid())
+  channelId       String
+  channel         Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  subscriberCount Int
+  date            DateTime @default(now())
+
+  @@index([channelId])
+  @@index([date])
+}
+
+

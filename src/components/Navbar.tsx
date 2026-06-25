@@ -11,8 +11,10 @@ export default function Navbar() {
     { name: 'スケジュール', path: '/schedule' },
     { name: 'アーカイブ', path: '/archives' },
     { name: 'タレント', path: '/talents' },
+    { name: 'マイページ', path: '/mypage' },
     { name: '設定', path: '/settings' },
   ];
+
 
   return (
     <header className={styles.header}>

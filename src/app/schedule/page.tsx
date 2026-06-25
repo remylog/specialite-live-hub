@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { getLiveAndUpcoming, getPastVideos } from '@/utils/holodex';
 import { Video } from '@/types';
 import VideoCard from '@/components/VideoCard';
@@ -8,7 +8,9 @@ import VideoModal from '@/components/VideoModal';
 import styles from './schedule.module.css';
 
 export default function Schedule() {
-  const [timelineVideos, setTimelineVideos] = useState<Video[]>([]);
+  const [rawVideos, setRawVideos] = useState<Video[]>([]);
+  const [timeOffset, setTimeOffset] = useState<number>(0);
+  const [now, setNow] = useState<Date>(new Date());
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,9 +21,9 @@ export default function Schedule() {
       setError(null);
 
       // 今日の日付範囲を計算 (0:00:00 〜 23:59:59)
-      const now = new Date();
-      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-      const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      const currentNow = new Date(Date.now() + timeOffset);
+      const startOfToday = new Date(currentNow.getFullYear(), currentNow.getMonth(), currentNow.getDate(), 0, 0, 0, 0);
+      const endOfToday = new Date(currentNow.getFullYear(), currentNow.getMonth(), currentNow.getDate(), 23, 59, 59, 999);
 
       // 1. ライブ配信中 & スケジュールデータを取得
       const liveData = await getLiveAndUpcoming();
@@ -43,31 +45,15 @@ export default function Schedule() {
       const todayUpcoming = upcomingList.filter(filterToday);
       const todayPast = pastList.filter(filterToday);
 
-      // 4. すべてマージ (現在時刻表示用のダミーオブジェクトも挿入する)
-      const nowVideo: Video = {
-        id: 'now-indicator',
-        title: 'NOW',
-        status: 'live',
-        type: 'stream',
-        channel: { id: 'now', name: '', english_name: '', photo: '' },
-        start_actual: now.toISOString()
-      };
-
-      const merged = [...todayLive, ...todayUpcoming, ...todayPast, nowVideo];
+      // 4. すべてマージ
+      const merged = [...todayLive, ...todayUpcoming, ...todayPast];
 
       // 重複排除
       const uniqueMap = new Map<string, Video>();
       merged.forEach((v) => uniqueMap.set(v.id, v));
       const uniqueList = Array.from(uniqueMap.values());
 
-      // 5. 時間順にソート (開始時刻の早い順)
-      uniqueList.sort((a, b) => {
-        const timeA = new Date(a.start_actual || a.start_scheduled || '').getTime();
-        const timeB = new Date(b.start_actual || b.start_scheduled || '').getTime();
-        return timeA - timeB;
-      });
-
-      setTimelineVideos(uniqueList);
+      setRawVideos(uniqueList);
 
     } catch (err) {
       setError('スケジュール情報の取得に失敗しました。');
@@ -79,7 +65,114 @@ export default function Schedule() {
 
   useEffect(() => {
     fetchSchedule();
+
+    // NICT NTP時刻による補正のロード
+    const syncTime = async () => {
+      try {
+        const start = Date.now();
+        const res = await fetch('/api/time');
+        const latency = Date.now() - start;
+        
+        if (res.ok) {
+          const data = await res.json();
+          const nictTime = data.timestamp;
+          // ネットワーク遅延の半分を考慮して補正
+          const estimatedNictNow = nictTime + (latency / 2);
+          const offset = estimatedNictNow - Date.now();
+          setTimeOffset(offset);
+          setNow(new Date(Date.now() + offset));
+        }
+      } catch (err) {
+        console.error('Failed to sync time with NTP:', err);
+      }
+    };
+    
+    syncTime();
   }, []);
+
+  useEffect(() => {
+    // 補正した現在時刻を1分ごとに更新
+    const updateTime = () => {
+      setNow(new Date(Date.now() + timeOffset));
+    };
+
+    updateTime();
+
+    const interval = setInterval(updateTime, 60000);
+    return () => clearInterval(interval);
+  }, [timeOffset]);
+
+  // 時刻文字列の抽出 (HH:MM)
+  const extractTime = (dateString?: string) => {
+    if (!dateString) return '--:--';
+    const d = new Date(dateString);
+    return d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+  };
+
+
+  // 同一開始時間でグループ化するロジック
+  const timelineGroups = useMemo(() => {
+
+    // まず時間順にソートした動画リストを作成
+    const sorted = [...rawVideos].sort((a, b) => {
+      const timeA = new Date(a.start_actual || a.start_scheduled || '').getTime();
+      const timeB = new Date(b.start_actual || b.start_scheduled || '').getTime();
+      return timeA - timeB;
+    });
+
+    const groups: {
+      type: 'now' | 'videos';
+      timeKey: string;
+      timestamp: number;
+      videos?: Video[];
+    }[] = [];
+
+    // 各動画をグループに分類
+    sorted.forEach((video) => {
+      const timeStr = extractTime(video.start_actual || video.start_scheduled);
+      const timestamp = new Date(video.start_actual || video.start_scheduled || '').getTime();
+      
+      const existing = groups.find((g) => g.type === 'videos' && g.timeKey === timeStr);
+      if (existing) {
+        existing.videos?.push(video);
+      } else {
+        groups.push({
+          type: 'videos',
+          timeKey: timeStr,
+          timestamp,
+          videos: [video],
+        });
+      }
+    });
+
+    // NOWインジケーターを挿入
+    const nowTimeKey = extractTime(now.toISOString());
+    const nowTimestamp = now.getTime();
+    
+    // 適切なタイミング（時系列順）でNOW位置を見つけて挿入
+    let inserted = false;
+    for (let i = 0; i < groups.length; i++) {
+      if (groups[i].timestamp > nowTimestamp) {
+        groups.splice(i, 0, {
+          type: 'now',
+          timeKey: nowTimeKey,
+          timestamp: nowTimestamp,
+        });
+        inserted = true;
+        break;
+      }
+    }
+
+    if (!inserted) {
+      groups.push({
+        type: 'now',
+        timeKey: nowTimeKey,
+        timestamp: nowTimestamp,
+      });
+    }
+
+    return groups;
+  }, [rawVideos, now]);
 
   const handleVideoClick = (video: Video) => {
     setSelectedVideo(video);
@@ -87,13 +180,6 @@ export default function Schedule() {
 
   const handleCloseModal = () => {
     setSelectedVideo(null);
-  };
-
-  // 時刻文字列の抽出 (HH:MM)
-  const extractTime = (dateString?: string) => {
-    if (!dateString) return '--:--';
-    const d = new Date(dateString);
-    return d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -118,7 +204,7 @@ export default function Schedule() {
         </div>
       ) : (
         <>
-          {timelineVideos.length <= 1 ? ( // ダミーインジケーターのみ、またはデータ無しのとき
+          {rawVideos.length === 0 ? (
             <div className={`glass-panel ${styles.emptyBox}`}>
               本日のスケジュールはまだ登録されていません。
             </div>
@@ -129,15 +215,14 @@ export default function Schedule() {
 
               {/* タイムラインアイテムリスト */}
               <div className={styles.timelineItems}>
-                {timelineVideos.map((video) => {
+                {timelineGroups.map((group, groupIdx) => {
                   // 現在時刻ラインを描画
-                  if (video.id === 'now-indicator') {
-                    const timeStr = extractTime(video.start_actual);
+                  if (group.type === 'now') {
                     return (
-                      <div key={video.id} className={styles.nowLineItem}>
+                      <div key={`now-${groupIdx}`} className={styles.nowLineItem}>
                         <div className={styles.nowTimeSection}>
                           <div className={styles.nowCircle}></div>
-                          <span className={styles.nowTimeText}>{timeStr}</span>
+                          <span className={styles.nowTimeText}>{group.timeKey}</span>
                         </div>
                         <div className={styles.nowLineSection}>
                           <div className={styles.nowLine}></div>
@@ -147,13 +232,16 @@ export default function Schedule() {
                     );
                   }
 
-                  const timeStr = extractTime(video.start_actual || video.start_scheduled);
-                  const isLive = video.status === 'live';
-                  const isUpcoming = video.status === 'upcoming';
+                  const videos = group.videos || [];
+                  if (videos.length === 0) return null;
+
+                  const firstVideo = videos[0];
+                  const isLive = videos.some((v) => v.status === 'live');
+                  const isUpcoming = videos.some((v) => v.status === 'upcoming');
                   
                   return (
                     <div
-                      key={video.id}
+                      key={`group-${group.timeKey}-${groupIdx}`}
                       className={`${styles.timelineItem} ${
                         isLive ? styles.itemLive : isUpcoming ? styles.itemUpcoming : ''
                       }`}
@@ -161,12 +249,16 @@ export default function Schedule() {
                       {/* 時刻表示 */}
                       <div className={styles.timeSection}>
                         <div className={styles.timeCircle}></div>
-                        <span className={styles.timeText}>{timeStr}</span>
+                        <span className={styles.timeText}>{group.timeKey}</span>
                       </div>
 
-                      {/* 配信カード */}
-                      <div className={styles.cardSection}>
-                        <VideoCard video={video} onClick={handleVideoClick} />
+                      {/* 配信カードグループ（横並び） */}
+                      <div className={styles.cardGroupSection}>
+                        {videos.map((video) => (
+                          <div key={video.id} className={styles.cardWrapper}>
+                            <VideoCard video={video} onClick={handleVideoClick} />
+                          </div>
+                        ))}
                       </div>
                     </div>
                   );
@@ -182,3 +274,4 @@ export default function Schedule() {
     </div>
   );
 }
+

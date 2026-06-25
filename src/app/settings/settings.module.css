@@ -474,6 +474,32 @@
   color: var(--text-primary);
 }
 
+.subscriberCol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.subCountText {
+  font-weight: 900;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.sparklineWrapper {
+  display: inline-flex;
+  align-items: center;
+  background-color: #f8fafc;
+  border: 1px solid var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 0.15rem 0.25rem;
+  width: fit-content;
+}
+
+.sparklineSvg {
+  display: block;
+}
+
 .tableGroupBadge {
   display: inline-block;
   padding: 0.25rem 0.75rem;
@@ -830,4 +856,212 @@
     width: 100%;
     margin-top: 0.5rem;
   }
+
+  /* タブメニューを横スクロール可能に */
+  .tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .tabButton {
+    white-space: nowrap;
+    font-size: 0.85rem;
+    padding: 0.6rem 1rem;
+    box-shadow: 2px 2px 0px var(--text-primary);
+  }
+
+  /* テーブルのカードレイアウト化 */
+  .tableWrapper {
+    border: none;
+    box-shadow: none;
+  }
+
+  .talentTable {
+    display: block;
+  }
+
+  .talentTable thead {
+    display: none; /* ヘッダーはカード化するため非表示 */
+  }
+
+  .talentTable tbody {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .talentTable tr {
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border: 2px solid var(--text-primary);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-pop);
+    padding: 1rem;
+    position: relative;
+  }
+
+  .talentTable td {
+    display: block;
+    padding: 0.35rem 0;
+    border-bottom: none;
+    width: 100% !important;
+  }
+
+  /* チェックボックスを右上に配置 */
+  .talentTable td.checkboxCol {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    width: auto !important;
+    padding: 0;
+  }
+
+  /* アバターと名前の配置調整 */
+  .talentTable tr td:nth-child(2) {
+    margin-left: 2rem; /* チェックボックスを避ける */
+  }
+
+  .talentTable tr td:nth-child(3) {
+    margin-left: 2rem;
+  }
+
+  .talentTable tr td:nth-child(4) {
+    margin-left: 2rem;
+  }
+
+  .talentTable tr td:nth-child(5) {
+    margin-left: 2rem;
+  }
+
+  .tableAvatar {
+    width: 3.5rem;
+    height: 3.5rem;
+  }
+
+  .tableGroupBadge {
+    display: inline-block;
+  }
+
+  .snsCol {
+    margin-left: 2rem;
+    margin-top: 0.25rem;
+    border-top: 1px dashed rgba(30, 31, 75, 0.1);
+    padding-top: 0.5rem;
+  }
+
+  .rowActions {
+    margin-left: 2rem;
+    margin-top: 0.5rem;
+    width: calc(100% - 2rem);
+  }
+
+  .rowActions button {
+    flex: 1;
+    text-align: center;
+  }
 }
+
+
+/* 一括操作バー */
+.bulkActionBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #faf5ff;
+  border: 2px solid var(--text-primary);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: 3px 3px 0px var(--text-primary);
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.bulkActionText {
+  font-weight: 900;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.bulkActionButtons {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.bulkSelect {
+  background: #ffffff;
+  border: 2px solid var(--text-primary);
+  color: var(--text-primary);
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-sm);
+  outline: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 2px 2px 0px var(--text-primary);
+}
+
+.bulkSelect:focus {
+  border-color: var(--accent-pink);
+}
+
+/* チェックボックス列用スタイル */
+.checkboxCol {
+  width: 40px;
+  text-align: center;
+}
+
+.checkboxCol input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--accent-pink);
+}
+
+/* グループ管理用スタイル */
+.groupGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.groupCard {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--text-primary);
+  background-color: #ffffff;
+  box-shadow: 2px 2px 0px var(--text-primary);
+  transition: var(--transition-bounce);
+}
+
+.groupCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 4px 4px 0px var(--text-primary);
+}
+
+.groupName {
+  font-weight: 900;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.groupForm {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  max-width: 450px;
+  margin-bottom: 1.5rem;
+}
+
+

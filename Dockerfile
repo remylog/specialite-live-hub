@@ -42,6 +42,12 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
+# entrypoint.sh のコピー（自動スキーマ適用スクリプト）
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+COPY --chown=nextjs:nodejs entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
+
 USER nextjs
 
 EXPOSE 3000
@@ -49,6 +55,5 @@ EXPOSE 3000
 ENV PORT 3000
 ENV HOSTNAME "0.0.0.0"
 
-# コンテナ起動時にPrismaマイグレーションを実行してからサーバーを起動するシェルスクリプトや、
-# または直接node server.jsを実行
-CMD ["node", "server.js"]
+# コンテナ起動時にPrismaスキーマ同期を自動実行してからNext.jsサーバーを起動する
+CMD ["/bin/sh", "./entrypoint.sh"]

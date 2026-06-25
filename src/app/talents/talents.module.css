@@ -15,11 +15,14 @@
   padding: 0.5rem 0.25rem; /* ホバー時のY軸の移動やシャドウのために上下に十分なパディングを追加 */
   margin: -0.5rem -0.25rem; /* パディング分コンテナを広げる */
   scrollbar-width: none; /* Firefox用 */
+  width: 100%; /* 横幅いっぱいに広げる */
+  -webkit-overflow-scrolling: touch; /* スムーズなスクロール */
 }
 
 .groupTabs::-webkit-scrollbar {
   display: none; /* Safari/Chrome用 */
 }
+
 
 .tabBtn {
   background: #ffffff;

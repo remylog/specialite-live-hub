@@ -63,11 +63,25 @@
   box-shadow: 2px 2px 0px var(--text-primary);
 }
 
-.cardSection {
+.cardGroupSection {
   flex-grow: 1;
   padding-left: 2rem;
-  max-width: 500px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.5rem;
+  width: 100%;
 }
+
+.cardWrapper {
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .cardGroupSection {
+    grid-template-columns: repeat(3, minmax(280px, 1fr));
+  }
+}
+
 
 /* ライブ中アイテムの特別スタイル */
 .itemLive .timeCircle {
@@ -232,32 +246,54 @@
 }
 
 @media (max-width: 640px) {
+  .timelineWrapper {
+    padding: 1rem 0 2rem 0; /* padding-leftを無くす */
+  }
+
   .timelineLine {
-    left: 6rem; /* 4.5rem + 1.5rem */
+    left: 3.5rem; /* モバイルでは左側に寄せる */
   }
   
   .timeSection, .nowTimeSection {
-    width: 4.5rem;
-    padding-right: 0.75rem;
+    width: 3.25rem;
+    padding-right: 0.5rem;
+    padding-top: 1rem;
   }
   
   .timeText {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
+  }
+
+  .nowTimeText {
+    font-size: 0.8rem;
   }
   
   .timeCircle {
-    left: 4.5rem;
+    left: 3.5rem;
+    width: 10px;
+    height: 10px;
+    margin-left: -5px;
   }
   
   .nowCircle {
-    left: 4.5rem;
+    left: 3.5rem;
+    width: 12px;
+    height: 12px;
+    margin-left: -6px;
   }
   
-  .cardSection, .nowLineSection {
-    padding-left: 1.25rem;
+  .cardGroupSection, .nowLineSection {
+    padding-left: 0.75rem;
   }
+
   
   .skeletonContainer {
-    padding-left: 4rem;
+    padding-left: 3.5rem;
+  }
+
+  .nowLabel {
+    font-size: 0.65rem;
+    padding: 0.1rem 0.4rem;
   }
 }
+

@@ -1,0 +1,22 @@
+{
+  "name": "Specialite Live Hub",
+  "short_name": "Specialite Hub",
+  "description": "すぺしゃりて所属タレントの配信スケジュールやライブ配信、過去のアーカイブ情報をまとめてお届けします。",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#ff8fa3",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}

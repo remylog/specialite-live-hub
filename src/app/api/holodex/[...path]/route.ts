@@ -34,20 +34,20 @@ async function cacheVideosToDb(videos: any[]) {
     for (const video of videos) {
       if (!video.id || !video.channel || !video.channel.id) continue;
       
-      // 1. チャンネルのUPSERT
-      await prisma.channel.upsert({
+      // 登録されているタレントかチェックします
+      const existingChannel = await prisma.channel.findUnique({
+        where: { id: video.channel.id }
+      });
+
+      if (!existingChannel) {
+        // 未登録のチャンネルの動画はキャッシュをスキップします
+        continue;
+      }
+      
+      // 1. チャンネルの更新（最新のプロフィール情報などを上書き）
+      await prisma.channel.update({
         where: { id: video.channel.id },
-        update: {
-          name: video.channel.name,
-          englishName: video.channel.english_name || null,
-          photo: video.channel.photo || null,
-          twitter: video.channel.twitter || null,
-          youtubeHandle: video.channel.youtube_handle || null,
-          group: video.channel.group || null,
-          description: video.channel.description || null,
-        },
-        create: {
-          id: video.channel.id,
+        data: {
           name: video.channel.name,
           englishName: video.channel.english_name || null,
           photo: video.channel.photo || null,

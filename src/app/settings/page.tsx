@@ -7,14 +7,67 @@ import styles from './settings.module.css';
 
 export default function Settings() {
   // システム設定用
+  const [testingDiscord, setTestingDiscord] = useState(false);
+  const [discordTestResult, setDiscordTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [adminKey, setAdminKey] = useState('');
+  const [adminKeySaved, setAdminKeySaved] = useState(false);
+
+  // AdminKeyのlocalStorageからの読み込み
+  useEffect(() => {
+    const savedKey = localStorage.getItem('specialite_hub_admin_key') || '';
+    setAdminKey(savedKey);
+  }, []);
+
+  const handleSaveAdminKey = () => {
+    localStorage.setItem('specialite_hub_admin_key', adminKey.trim());
+    setAdminKeySaved(true);
+    setTimeout(() => setAdminKeySaved(false), 2000);
+  };
+
+  const getAdminHeaders = (): Record<string, string> => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const key = localStorage.getItem('specialite_hub_admin_key');
+    if (key) headers['x-admin-key'] = key;
+    return headers;
+  };
+
+  const handleTestDiscord = async () => {
+    try {
+      setTestingDiscord(true);
+      setDiscordTestResult(null);
+      
+      const res = await fetch('/api/live/test-discord', {
+        method: 'POST',
+        headers: getAdminHeaders(),
+      });
+      
+      const data = await res.json();
+      if (res.ok) {
+        setDiscordTestResult({ success: true, message: data.message });
+      } else {
+        setDiscordTestResult({ success: false, message: data.error || 'テスト送信に失敗しました。' });
+      }
+    } catch (err) {
+      console.error(err);
+      setDiscordTestResult({ success: false, message: '通信エラーが発生しました。' });
+    } finally {
+      setTestingDiscord(false);
+    }
+  };
 
   // アクティブタブ
-  const [activeTab, setActiveTab] = useState<'system' | 'favorites' | 'talents'>('system');
+  const [activeTab, setActiveTab] = useState<'system' | 'favorites' | 'talents' | 'groups'>('system');
+
 
   // タレントデータとお気に入り
   const [talents, setTalents] = useState<Channel[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [loadingTalents, setLoadingTalents] = useState(false);
+
+  // グループ管理用
+  const [dbGroups, setDbGroups] = useState<{ id: string; name: string }[]>([]);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [loadingGroups, setLoadingGroups] = useState(false);
 
   // タレント追加・編集モーダル用
   const [modalOpen, setModalOpen] = useState(false);
@@ -30,16 +83,24 @@ export default function Settings() {
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // グループ選択・複数選択用のstate
+  const [groupSelectVal, setGroupSelectVal] = useState('1期生');
+  const [customGroupVal, setCustomGroupVal] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkTargetGroup, setBulkTargetGroup] = useState('');
+
   // 一括追加モーダル用
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [bulkIds, setBulkIds] = useState('');
   const [bulkProgress, setBulkProgress] = useState<{ total: number; current: number; success: number; failed: number } | null>(null);
   const [bulkLogs, setBulkLogs] = useState<{ id: string; status: 'success' | 'error'; message: string }[]>([]);
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const fetchTalents = async () => {
     try {
       setLoadingTalents(true);
+      setSelectedIds([]); // 選択状態を解除
       const res = await fetch('/api/talents');
       if (res.ok) {
         const data = await res.json();
@@ -52,9 +113,25 @@ export default function Settings() {
     }
   };
 
+  const fetchGroups = async () => {
+    try {
+      setLoadingGroups(true);
+      const res = await fetch('/api/groups');
+      if (res.ok) {
+        const data = await res.json();
+        setDbGroups(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch groups:', err);
+    } finally {
+      setLoadingGroups(false);
+    }
+  };
+
   useEffect(() => {
     setFavorites(getFavorites());
     fetchTalents();
+    fetchGroups();
   }, []);
 
 
@@ -85,7 +162,9 @@ export default function Settings() {
     setFormPhoto('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80');
     setFormTwitter('');
     setFormYoutubeHandle('');
-    setFormGroup('1期生');
+    setFormGroup(dbGroups[0]?.name || '1期生');
+    setGroupSelectVal(dbGroups[0]?.name || '1期生');
+    setCustomGroupVal('');
     setFormDescription('');
     setFormError(null);
     setModalOpen(true);
@@ -100,6 +179,14 @@ export default function Settings() {
     setFormTwitter(talent.twitter || '');
     setFormYoutubeHandle(talent.youtube_handle || '');
     setFormGroup(talent.group || '');
+    const groupNames = dbGroups.map(g => g.name);
+    if (groupNames.includes(talent.group || '')) {
+      setGroupSelectVal(talent.group || '');
+      setCustomGroupVal('');
+    } else {
+      setGroupSelectVal('custom');
+      setCustomGroupVal(talent.group || '');
+    }
     setFormDescription(talent.description || '');
     setFormError(null);
     setModalOpen(true);
@@ -122,6 +209,17 @@ export default function Settings() {
         if (data.english_name) setFormEnglishName(data.english_name);
         if (data.photo) setFormPhoto(data.photo);
         if (data.twitter) setFormTwitter(data.twitter);
+        if (data.group) {
+          setFormGroup(data.group);
+          const groupNames = dbGroups.map(g => g.name);
+          if (groupNames.includes(data.group)) {
+            setGroupSelectVal(data.group);
+            setCustomGroupVal('');
+          } else {
+            setGroupSelectVal('custom');
+            setCustomGroupVal(data.group);
+          }
+        }
         if (data.description) setFormDescription(data.description);
       } else {
         setFormError('タレント情報の取得に失敗しました。チャンネルIDが正しいか確認してください。');
@@ -152,7 +250,7 @@ export default function Settings() {
         photo: formPhoto.trim(),
         twitter: formTwitter.trim(),
         youtube_handle: formYoutubeHandle.trim(),
-        group: formGroup.trim(),
+        group: groupSelectVal === 'custom' ? customGroupVal.trim() : groupSelectVal,
         description: formDescription.trim(),
       };
 
@@ -166,9 +264,7 @@ export default function Settings() {
 
       const res = await fetch(url, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAdminHeaders(),
         body: JSON.stringify(payload),
       });
 
@@ -237,7 +333,7 @@ export default function Settings() {
 
         const postRes = await fetch('/api/talents', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAdminHeaders(),
           body: JSON.stringify(payload),
         });
 
@@ -264,6 +360,205 @@ export default function Settings() {
     setBulkSubmitting(false);
   };
 
+  // グループ追加・削除ハンドラー
+  const handleAddGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newGroupName.trim()) return;
+
+    try {
+      setSubmitting(true);
+      const res = await fetch('/api/groups', {
+        method: 'POST',
+        headers: getAdminHeaders(),
+        body: JSON.stringify({ name: newGroupName.trim() })
+      });
+
+      if (res.ok) {
+        setNewGroupName('');
+        await fetchGroups();
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || 'グループの追加に失敗しました。');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('エラーが発生しました。');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteGroup = async (id: string, name: string) => {
+    const confirmed = window.confirm(
+      `グループ「${name}」を削除しますか？\n※このグループに所属しているタレントの所属情報は削除されませんが、グループの紐付けが解除されます。`
+    );
+    if (!confirmed) return;
+
+    try {
+      setSubmitting(true);
+      const res = await fetch(`/api/groups/${id}`, {
+        method: 'DELETE',
+        headers: getAdminHeaders(),
+      });
+
+      if (res.ok) {
+        await fetchGroups();
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || 'グループの削除に失敗しました。');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('エラーが発生しました。');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      const res = await fetch('/api/talents/export', {
+        headers: getAdminHeaders(),
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'エクスポートに失敗しました。');
+      }
+      const data = await res.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `specialite_talents_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'エクスポート処理中にエラーが発生しました。');
+    }
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const content = event.target?.result as string;
+        const parsed = JSON.parse(content);
+
+        if (!parsed.groups || !parsed.talents) {
+          alert('不正なJSON形式です。groupsとtalentsが含まれている必要があります。');
+          return;
+        }
+
+        const confirmed = window.confirm(
+          `グループ ${parsed.groups.length} 件、タレント ${parsed.talents.length} 件をインポートしますか？\n既存のデータは上書きされます。`
+        );
+        if (!confirmed) return;
+
+        const res = await fetch('/api/talents/import', {
+          method: 'POST',
+          headers: getAdminHeaders(),
+          body: content,
+        });
+
+        if (res.ok) {
+          alert('インポートが完了しました。');
+          await fetchTalents();
+          await fetchGroups();
+          window.dispatchEvent(new Event('favoritesChange'));
+        } else {
+          const errorData = await res.json().catch(() => ({}));
+          alert(errorData.error || 'インポートに失敗しました。');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('ファイルの読み込み、またはパースに失敗しました。無効なJSONファイルです。');
+      } finally {
+        e.target.value = ''; // ファイル選択をリセット
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // 複数選択用のハンドラー
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedIds(talents.map(t => t.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectRow = (id: string) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    const confirmed = window.confirm(
+      `選択した ${selectedIds.length} 件のタレントをすべて削除しますか？\n関連するアーカイブキャッシュもすべて削除されます。`
+    );
+    if (!confirmed) return;
+
+    try {
+      setSubmitting(true);
+      const res = await fetch('/api/talents/bulk-delete', {
+        method: 'POST',
+        headers: getAdminHeaders(),
+        body: JSON.stringify({ ids: selectedIds })
+      });
+
+      if (res.ok) {
+        setSelectedIds([]);
+        await fetchTalents();
+        window.dispatchEvent(new Event('favoritesChange'));
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || '一括削除に失敗しました。');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('一括削除処理中にエラーが発生しました。');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleBulkGroupUpdate = async () => {
+    if (selectedIds.length === 0 || !bulkTargetGroup) return;
+    const groupVal = bulkTargetGroup === 'null' ? '' : bulkTargetGroup;
+
+    try {
+      setSubmitting(true);
+      const res = await fetch('/api/talents/bulk-group', {
+        method: 'PUT',
+        headers: getAdminHeaders(),
+        body: JSON.stringify({ ids: selectedIds, group: groupVal })
+      });
+
+      if (res.ok) {
+        setSelectedIds([]);
+        setBulkTargetGroup('');
+        await fetchTalents();
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        alert(errorData.error || '一括グループ変更に失敗しました。');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('グループ一括変更処理中にエラーが発生しました。');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleDeleteTalent = async (talent: Channel) => {
     const confirmed = window.confirm(
       `${talent.name} を削除しますか？\nこのタレントに紐づいているアーカイブ動画のキャッシュもすべて削除されます。`
@@ -273,6 +568,7 @@ export default function Settings() {
     try {
       const res = await fetch(`/api/talents/${talent.id}`, {
         method: 'DELETE',
+        headers: getAdminHeaders(),
       });
 
       if (res.ok) {
@@ -328,6 +624,12 @@ export default function Settings() {
         >
           👥 タレント管理 ({talents.length})
         </button>
+        <button
+          className={`${styles.tabButton} ${activeTab === 'groups' ? styles.activeTab : ''}`}
+          onClick={() => setActiveTab('groups')}
+        >
+          🏷️ グループ管理 ({dbGroups.length})
+        </button>
       </div>
 
       <div className={styles.container}>
@@ -340,8 +642,71 @@ export default function Settings() {
                 APIキー等のシステム設定は現在環境変数(.env)で管理されています。
               </p>
             </section>
+
+            <section className={`glass-panel ${styles.card}`} style={{ marginTop: '1.5rem' }}>
+              <h2 className={styles.cardTitle}>🔑 管理者キー設定</h2>
+              {process.env.NEXT_PUBLIC_BYPASS_ADMIN_AUTH === 'true' ? (
+                <p className={styles.cardDesc} style={{ color: '#10b981', fontWeight: 'bold' }}>
+                  現在、環境変数によって管理者キー認証は無効化（スキップ）されています。Cloudflare Access等で前段の保護を行っている場合に適しています。この端末での管理者キーの設定は不要です。
+                </p>
+              ) : (
+                <>
+                  <p className={styles.cardDesc}>
+                    タレントの追加・削除・同期などの管理操作を実行するには、サーバー側に設定された「ADMIN_SECRET_KEY」と同じ値をここに入力してください。このキーはブラウザ内にのみ保存され、管理APIへのリクエスト時に自動的に使用されます。
+                  </p>
+                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', maxWidth: '500px', marginTop: '1rem' }}>
+                    <input
+                      type="password"
+                      value={adminKey}
+                      onChange={(e) => setAdminKey(e.target.value)}
+                      placeholder="ADMIN_SECRET_KEY の値を入力..."
+                      className={styles.input}
+                      style={{ flex: 1 }}
+                    />
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={handleSaveAdminKey}
+                      style={{ flexShrink: 0 }}
+                    >
+                      {adminKeySaved ? '✅ 保存済み' : '保存する'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </section>
+
+            <section className={`glass-panel ${styles.card}`} style={{ marginTop: '1.5rem' }}>
+              <h2 className={styles.cardTitle}>🔔 Discord Webhook 連携テスト</h2>
+              <p className={styles.cardDesc}>
+                現在環境変数に登録されている「DISCORD_WEBHOOK_URL」宛てに、テスト用の配信用メッセージを送信して疎通確認を行います。
+              </p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '400px' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleTestDiscord}
+                  disabled={testingDiscord}
+                >
+                  {testingDiscord ? '📡 送信中...' : '📨 テスト通知を送信'}
+                </button>
+
+                {discordTestResult && (
+                  <div
+                    className={`${styles.testResultCard} ${
+                      discordTestResult.success ? styles.testSuccess : styles.testFailed
+                    }`}
+                  >
+                    {discordTestResult.success ? '✅ ' : '❌ '}
+                    {discordTestResult.message}
+                  </div>
+                )}
+              </div>
+            </section>
           </>
         )}
+
 
         {/* お気に入り管理タブ */}
         {activeTab === 'favorites' && (
@@ -408,7 +773,28 @@ export default function Settings() {
                 </p>
               </div>
               <div className={styles.headerActions}>
-                <button type="button" className={`btn btn-secondary`} onClick={openBulkModal}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleExport}
+                >
+                  📥 エクスポート
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => document.getElementById('import-file-input')?.click()}
+                >
+                  📤 インポート
+                </button>
+                <input
+                  type="file"
+                  id="import-file-input"
+                  accept=".json"
+                  onChange={handleImport}
+                  style={{ display: 'none' }}
+                />
+                <button type="button" className="btn btn-secondary" onClick={openBulkModal}>
                   📦 一括追加
                 </button>
                 <button type="button" className="btn btn-primary" onClick={openAddModal}>
@@ -424,78 +810,184 @@ export default function Settings() {
                 登録されているタレント情報がありません。（APIをロードすると自動的にシードされます）
               </div>
             ) : (
-              <div className={styles.tableWrapper}>
-                <table className={styles.talentTable}>
-                  <thead>
-                    <tr>
-                      <th>写真</th>
-                      <th>チャンネルID / 名前</th>
-                      <th>所属グループ</th>
-                      <th>Twitter / YouTube</th>
-                      <th>操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {talents.map((talent) => (
-                      <tr key={talent.id}>
-                        <td>
-                          {talent.photo ? (
-                            <img src={talent.photo} alt={talent.name} className={styles.tableAvatar} />
-                          ) : (
-                            <div className={styles.tableAvatarPlaceholder}>👤</div>
-                          )}
-                        </td>
-                        <td>
-                          <div className={styles.talentNameCol}>
-                            <span className={styles.tableNameText}>{talent.name}</span>
-                            <span className={styles.tableSubText}>{talent.english_name}</span>
-                            <code className={styles.tableCodeId}>{talent.id}</code>
-                          </div>
-                        </td>
-                        <td>
-                          <span className={styles.tableGroupBadge}>{talent.group || '未設定'}</span>
-                        </td>
-                        <td>
-                          <div className={styles.snsCol}>
-                            {talent.twitter && (
-                              <a
-                                href={`https://twitter.com/${talent.twitter}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className={styles.snsLink}
-                              >
-                                🐦 @{talent.twitter}
-                              </a>
-                            )}
-                            {talent.youtube_handle && (
-                              <span className={styles.youtubeHandleText}>
-                                📺 {talent.youtube_handle}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td>
-                          <div className={styles.rowActions}>
-                            <button
-                              type="button"
-                              className={`btn btn-secondary ${styles.actionBtnSmall}`}
-                              onClick={() => openEditModal(talent)}
-                            >
-                              ✏️ 編集
-                            </button>
-                            <button
-                              type="button"
-                              className={`btn btn-secondary ${styles.actionBtnSmall} ${styles.btnDanger}`}
-                              onClick={() => handleDeleteTalent(talent)}
-                            >
-                              🗑️ 削除
-                            </button>
-                          </div>
-                        </td>
+              <>
+                {selectedIds.length > 0 && (
+                  <div className={styles.bulkActionBar}>
+                    <span className={styles.bulkActionText}>{selectedIds.length} 件選択中</span>
+                    <div className={styles.bulkActionButtons}>
+                      <select
+                        value={bulkTargetGroup}
+                        onChange={(e) => setBulkTargetGroup(e.target.value)}
+                        className={styles.bulkSelect}
+                      >
+                        <option value="">-- グループを一括変更 --</option>
+                        {dbGroups.map((g) => (
+                          <option key={g.id} value={g.name}>{g.name}</option>
+                        ))}
+                        <option value="null">所属なし</option>
+                      </select>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={handleBulkGroupUpdate}
+                        disabled={!bulkTargetGroup || submitting}
+                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                      >
+                        変更を適用
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.dangerOutlineBtn} btn`}
+                        onClick={handleBulkDelete}
+                        disabled={submitting}
+                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', marginLeft: '0.5rem' }}
+                      >
+                        🗑️ 一括削除
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className={styles.tableWrapper}>
+                  <table className={styles.talentTable}>
+                    <thead>
+                      <tr>
+                        <th className={styles.checkboxCol}>
+                          <input
+                            type="checkbox"
+                            onChange={handleSelectAll}
+                            checked={talents.length > 0 && selectedIds.length === talents.length}
+                          />
+                        </th>
+                        <th>写真</th>
+                        <th>チャンネルID / 名前</th>
+                        <th>所属グループ</th>
+                        <th>Twitter / YouTube</th>
+                        <th>操作</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {talents.map((talent) => {
+                        return (
+                          <tr key={talent.id}>
+                            <td className={styles.checkboxCol}>
+                              <input
+                                type="checkbox"
+                                checked={selectedIds.includes(talent.id)}
+                                onChange={() => handleSelectRow(talent.id)}
+                              />
+                            </td>
+                            <td>
+                              {talent.photo ? (
+                                <img src={talent.photo} alt={talent.name} className={styles.tableAvatar} />
+                              ) : (
+                                <div className={styles.tableAvatarPlaceholder}>👤</div>
+                              )}
+                            </td>
+                            <td>
+                              <div className={styles.talentNameCol}>
+                                <span className={styles.tableNameText}>{talent.name}</span>
+                                <span className={styles.tableSubText}>{talent.english_name}</span>
+                                <code className={styles.tableCodeId}>{talent.id}</code>
+                              </div>
+                            </td>
+                            <td>
+                              <span className={styles.tableGroupBadge}>{talent.group || '未設定'}</span>
+                            </td>
+                            <td>
+                              <div className={styles.snsCol}>
+                                {talent.twitter && (
+                                  <a
+                                    href={`https://twitter.com/${talent.twitter}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className={styles.snsLink}
+                                  >
+                                    🐦 @{talent.twitter}
+                                  </a>
+                                )}
+                                {talent.youtube_handle && (
+                                  <span className={styles.youtubeHandleText}>
+                                    📺 {talent.youtube_handle}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td>
+                              <div className={styles.rowActions}>
+                                <button
+                                  type="button"
+                                  className={`btn btn-secondary ${styles.actionBtnSmall}`}
+                                  onClick={() => openEditModal(talent)}
+                                >
+                                  ✏️ 編集
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`btn btn-secondary ${styles.actionBtnSmall} ${styles.btnDanger}`}
+                                  onClick={() => handleDeleteTalent(talent)}
+                                >
+                                  🗑️ 削除
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </section>
+        )}
+
+        {/* グループ管理タブ */}
+        {activeTab === 'groups' && (
+          <section className={`glass-panel ${styles.card}`}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <h2 className={styles.cardTitle}>所属グループ管理</h2>
+                <p className={styles.cardDesc}>
+                  タレントの分類に使用する所属グループ（期生）を管理します。追加したグループはタレント編集時の選択肢に表示されます。
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleAddGroup} className={styles.groupForm}>
+              <input
+                type="text"
+                className={styles.modalInput}
+                placeholder="新しいグループ名を入力（例: 4期生）"
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                disabled={submitting}
+              />
+              <button type="submit" className="btn btn-primary" disabled={submitting || !newGroupName.trim()}>
+                ➕ 追加
+              </button>
+            </form>
+
+            {loadingGroups ? (
+              <div className={styles.loadingSpinner}>読み込み中...</div>
+            ) : dbGroups.length === 0 ? (
+              <div className={styles.emptyState}>グループが登録されていません。</div>
+            ) : (
+              <div className={styles.groupGrid}>
+                {dbGroups.map((g) => (
+                  <div key={g.id} className={styles.groupCard}>
+                    <span className={styles.groupName}>{g.name}</span>
+                    <button
+                      type="button"
+                      className={`btn btn-secondary ${styles.actionBtnSmall} ${styles.btnDanger}`}
+                      onClick={() => handleDeleteGroup(g.id, g.name)}
+                      disabled={submitting}
+                      style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
+                    >
+                      🗑️ 削除
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
           </section>
@@ -580,17 +1072,32 @@ export default function Settings() {
                 </div>
 
                 <div className={styles.formField}>
-                  <label htmlFor="talent-group" className={styles.fieldLabel}>
+                  <label htmlFor="talent-group-select" className={styles.fieldLabel}>
                     所属グループ / 期生
                   </label>
-                  <input
-                    id="talent-group"
-                    type="text"
+                  <select
+                    id="talent-group-select"
                     className={styles.modalInput}
-                    placeholder="例: 1期生"
-                    value={formGroup}
-                    onChange={(e) => setFormGroup(e.target.value)}
-                  />
+                    value={groupSelectVal}
+                    onChange={(e) => setGroupSelectVal(e.target.value)}
+                  >
+                    {dbGroups.map((g) => (
+                      <option key={g.id} value={g.name}>{g.name}</option>
+                    ))}
+                    <option value="custom">その他（直接入力）</option>
+                  </select>
+                  
+                  {groupSelectVal === 'custom' && (
+                    <input
+                      id="talent-group"
+                      type="text"
+                      className={styles.modalInput}
+                      style={{ marginTop: '0.5rem' }}
+                      placeholder="グループ名を入力してください（例: 4期生）"
+                      value={customGroupVal}
+                      onChange={(e) => setCustomGroupVal(e.target.value)}
+                    />
+                  )}
                 </div>
               </div>
 
