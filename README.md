@@ -104,16 +104,26 @@ git pull
 ```
 
 ### 3. コンテナの再ビルドと起動
-コンテナを停止し、新しいイメージをビルドして再起動します。
+コンテナを起動したまま新しいイメージをビルドし、ビルド完了後にコンテナを切り替えます（これによりサービス停止時間を最小限に抑えられます）。
 
 ```sh
-docker compose down && docker compose up -d --build
+docker compose up -d --build
 ```
 
 コンテナ起動時に、entrypoint.sh 内の Prisma スキーマ同期処理（prisma db push）が自動的に走り、データベースのスキーマ構造も最新バージョンに自動で更新されます。
 
-### 4. 動作確認
-起動後、ヘルスチェックを確認して正常稼働しているかチェックしてください。
+### 4. 起動ログの確認
+コンテナが正常に起動し、データベースのスキーマ同期が成功しているかを確認します。
+
+```sh
+docker compose ps
+docker compose logs -f app
+```
+
+ログに「Schema sync complete. Starting Next.js server...」と表示されていれば完了です。
+
+### 5. 動作確認
+ヘルスチェックAPIを呼び出して正常稼働しているかチェックしてください。
 
 ```sh
 curl http://localhost:3000/api/health
