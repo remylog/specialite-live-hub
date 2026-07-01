@@ -12,6 +12,12 @@ export default function Settings() {
   const [adminKey, setAdminKey] = useState('');
   const [adminKeySaved, setAdminKeySaved] = useState(false);
 
+  // Gemini AI イチオシ配信管理用
+  const [updatingRecommend, setUpdatingRecommend] = useState(false);
+  const [recommendResult, setRecommendResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [recommendLogs, setRecommendLogs] = useState<{ id: string; status: string; message: string; count: number; createdAt: string }[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+
   // AdminKeyのlocalStorageからの読み込み
   useEffect(() => {
     const savedKey = localStorage.getItem('specialite_hub_admin_key') || '';
@@ -52,6 +58,67 @@ export default function Settings() {
       setDiscordTestResult({ success: false, message: '通信エラーが発生しました。' });
     } finally {
       setTestingDiscord(false);
+    }
+  };
+
+  const fetchRecommendLogs = async () => {
+    try {
+      setLoadingLogs(true);
+      const res = await fetch('/api/recommend/logs', {
+        headers: getAdminHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRecommendLogs(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch recommend logs:', err);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
+  const handleUpdateRecommend = async () => {
+    if (!window.confirm('昨日のイチオシ配信のおすすめ情報を再生成します。よろしいですか？')) return;
+    try {
+      setUpdatingRecommend(true);
+      setRecommendResult(null);
+      
+      const res = await fetch('/api/recommend', {
+        method: 'POST',
+        headers: getAdminHeaders(),
+      });
+      
+      const data = await res.json();
+      if (res.ok) {
+        setRecommendResult({ success: true, message: data.message });
+      } else {
+        setRecommendResult({ success: false, message: data.error || '生成に失敗しました。' });
+      }
+      await fetchRecommendLogs();
+    } catch (err) {
+      console.error(err);
+      setRecommendResult({ success: false, message: '通信エラーが発生しました。' });
+    } finally {
+      setUpdatingRecommend(false);
+    }
+  };
+
+  const handleClearRecommendLogs = async () => {
+    if (!window.confirm('すべての実行ログをクリアしますか？')) return;
+    try {
+      const res = await fetch('/api/recommend/logs', {
+        method: 'DELETE',
+        headers: getAdminHeaders(),
+      });
+      if (res.ok) {
+        setRecommendLogs([]);
+      } else {
+        alert('ログのクリアに失敗しました。');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('通信エラーが発生しました。');
     }
   };
 
@@ -132,6 +199,7 @@ export default function Settings() {
     setFavorites(getFavorites());
     fetchTalents();
     fetchGroups();
+    fetchRecommendLogs();
   }, []);
 
 
@@ -702,6 +770,95 @@ export default function Settings() {
                     {discordTestResult.message}
                   </div>
                 )}
+              </div>
+            </section>
+
+            <section className={`glass-panel ${styles.card}`} style={{ marginTop: '1.5rem' }}>
+              <h2 className={styles.cardTitle}>🤖 Gemini AI おすすめ配信管理</h2>
+              <p className={styles.cardDesc}>
+                昨日の配信データからGemini AIによるイチオシ配信の自動選定とおすすめ文言の生成を行います。通常は自動で実行されますが、手動で即時更新することも可能です。
+              </p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: '100%' }}>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleUpdateRecommend}
+                    disabled={updatingRecommend}
+                  >
+                    {updatingRecommend ? '🤖 生成更新中...' : '🔄 イチオシ配信を手動更新'}
+                  </button>
+
+                  {recommendLogs.length > 0 && (
+                    <button
+                      type="button"
+                      className={`btn btn-secondary ${styles.dangerOutlineBtn}`}
+                      onClick={handleClearRecommendLogs}
+                      style={{ marginLeft: 'auto' }}
+                    >
+                      🗑️ ログをクリア
+                    </button>
+                  )}
+                </div>
+
+                {recommendResult && (
+                  <div
+                    className={`${styles.testResultCard} ${
+                      recommendResult.success ? styles.testSuccess : styles.testFailed
+                    }`}
+                  >
+                    {recommendResult.success ? '✅ ' : '❌ '}
+                    {recommendResult.message}
+                  </div>
+                )}
+
+                <div style={{ marginTop: '1rem' }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>実行ログ (直近50件)</h3>
+                  {loadingLogs ? (
+                    <p style={{ color: 'var(--text-muted)' }}>読み込み中...</p>
+                  ) : recommendLogs.length === 0 ? (
+                    <p style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>実行履歴はありません。</p>
+                  ) : (
+                    <div style={{ overflowX: 'auto', maxHeight: '300px', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                        <thead>
+                          <tr style={{ backgroundColor: 'var(--bg-hover)', borderBottom: '1px solid var(--border-color)' }}>
+                            <th style={{ padding: '0.5rem', textAlign: 'left' }}>日時</th>
+                            <th style={{ padding: '0.5rem', textAlign: 'left' }}>結果</th>
+                            <th style={{ padding: '0.5rem', textAlign: 'left' }}>更新数</th>
+                            <th style={{ padding: '0.5rem', textAlign: 'left' }}>メッセージ</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {recommendLogs.map((log) => (
+                            <tr key={log.id} style={{ borderBottom: '1px solid var(--border-secondary)' }}>
+                              <td style={{ padding: '0.5rem', whiteSpace: 'nowrap' }}>
+                                {new Date(log.createdAt).toLocaleString()}
+                              </td>
+                              <td style={{ padding: '0.5rem', whiteSpace: 'nowrap' }}>
+                                <span
+                                  style={{
+                                    padding: '0.2rem 0.4rem',
+                                    borderRadius: '4px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 'bold',
+                                    backgroundColor: log.status === 'success' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                                    color: log.status === 'success' ? '#10b981' : '#ef4444',
+                                  }}
+                                >
+                                  {log.status === 'success' ? '成功' : '失敗'}
+                                </span>
+                              </td>
+                              <td style={{ padding: '0.5rem', textAlign: 'center' }}>{log.count}</td>
+                              <td style={{ padding: '0.5rem', color: 'var(--text-secondary)' }}>{log.message}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               </div>
             </section>
           </>

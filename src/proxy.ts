@@ -13,6 +13,8 @@ const PROTECTED_PATHS: { method: string; pattern: RegExp }[] = [
   { method: 'POST', pattern: /^\/api\/groups$/ },
   { method: 'DELETE', pattern: /^\/api\/groups\/[^/]+$/ },
   { method: 'POST', pattern: /^\/api\/recommend$/ },
+  { method: 'GET', pattern: /^\/api\/recommend\/logs$/ },
+  { method: 'DELETE', pattern: /^\/api\/recommend\/logs$/ },
   { method: 'POST', pattern: /^\/api\/live\/test-discord$/ },
 ];
 

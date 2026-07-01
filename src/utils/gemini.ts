@@ -8,11 +8,23 @@ interface RecommendedVideoResult {
   comment: string;
 }
 
+async function saveLog(status: 'success' | 'failed', message: string, count: number = 0) {
+  try {
+    await prisma.geminiLog.create({
+      data: { status, message, count },
+    });
+  } catch (error) {
+    console.error('Failed to save Gemini log to DB:', error);
+  }
+}
+
 export async function generateYesterdayRecommendations(): Promise<{ success: boolean; count: number }> {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      console.warn('[Gemini Sync] GEMINI_API_KEY is not defined. Skipping AI recommendation generation.');
+      const msg = 'GEMINI_API_KEYが設定されていません。AIおすすめ生成処理をスキップしました。';
+      console.warn(`[Gemini Sync] ${msg}`);
+      await saveLog('failed', msg, 0);
       return { success: false, count: 0 };
     }
 
@@ -59,7 +71,9 @@ export async function generateYesterdayRecommendations(): Promise<{ success: boo
 
 
     if (candidateVideos.length === 0) {
-      console.log('[Gemini Sync] No candidate videos found from yesterday.');
+      const msg = '候補となる昨日の配信動画が見つかりませんでした。';
+      console.log(`[Gemini Sync] ${msg}`);
+      await saveLog('success', msg, 0);
       return { success: true, count: 0 };
     }
 
@@ -125,7 +139,9 @@ ${videoListString}
     const recommendations: RecommendedVideoResult[] = JSON.parse(responseText.trim());
 
     if (!Array.isArray(recommendations) || recommendations.length === 0) {
-      console.warn('[Gemini Sync] Gemini returned no recommendations or invalid format.');
+      const msg = 'Geminiの返却したおすすめデータが空、または無効なフォーマットです。';
+      console.warn(`[Gemini Sync] ${msg}`);
+      await saveLog('failed', msg, 0);
       return { success: false, count: 0 };
     }
 
@@ -153,10 +169,15 @@ ${videoListString}
       }
     }
 
-    console.log(`[Gemini Sync] Generated and saved ${registeredCount} recommendations.`);
+    const msg = `おすすめアーカイブを生成しました。件数: ${registeredCount}`;
+    console.log(`[Gemini Sync] ${msg}`);
+    await saveLog('success', msg, registeredCount);
     return { success: true, count: registeredCount };
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : '予期せぬエラーが発生しました。';
     console.error('Error generating recommendations via Gemini:', error);
+    await saveLog('failed', `エラーが発生しました: ${errorMsg}`, 0);
     return { success: false, count: 0 };
   }
 }
+

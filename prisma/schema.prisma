@@ -71,4 +71,10 @@ model SubscriberHistory {
   @@index([date])
 }
 
-
+model GeminiLog {
+  id        String   @id @default(uuid())
+  status    String   // 'success' | 'failed'
+  message   String
+  count     Int      @default(0)
+  createdAt DateTime @default(now())
+}
