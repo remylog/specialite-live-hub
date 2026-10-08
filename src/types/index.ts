@@ -1,10 +1,3 @@
-export interface SubscriberHistory {
-  id: string;
-  channelId: string;
-  subscriberCount: number;
-  date: string;
-}
-
 export interface Channel {
   id: string;
   name: string;
@@ -14,8 +7,6 @@ export interface Channel {
   youtube_handle?: string;
   group?: string;
   description?: string;
-  subscriber_count?: number;
-  subscriber_histories?: SubscriberHistory[];
 }
 
 export interface Video {

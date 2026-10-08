@@ -4,7 +4,8 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      # 前段プロキシと同一ホストなら APP_BIND=127.0.0.1 で外部からの直接アクセスを遮断できる
+      - "${APP_BIND:-0.0.0.0}:3000:3000"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/specialite_hub?schema=public
       - HOLODEX_API_KEY=${HOLODEX_API_KEY}
@@ -53,9 +54,8 @@ services:
     entrypoint: >
       sh -c "
       apk add --no-cache curl tzdata &&
-      echo '0 4 * * * curl -s -X POST -H \"x-admin-key: $ADMIN_SECRET_KEY\" http://app:3000/api/talents/sync' > /etc/crontabs/root &&
       echo '30 4 * * * curl -s -X POST -H \"x-admin-key: $ADMIN_SECRET_KEY\" http://app:3000/api/recommend' >> /etc/crontabs/root &&
-      echo '*/5 * * * * curl -s -X POST http://app:3000/api/live/check' >> /etc/crontabs/root &&
+      echo '*/5 * * * * curl -s -X POST -H \"x-admin-key: $ADMIN_SECRET_KEY\" http://app:3000/api/live/check' >> /etc/crontabs/root &&
       exec crond -f -l 2
       "
 

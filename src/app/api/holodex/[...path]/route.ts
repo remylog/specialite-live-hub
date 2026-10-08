@@ -1,67 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import prisma from '@/utils/db';
+import { mapPrismaToHolodex } from '@/utils/mappers';
 
 const HOLODEX_BASE_URL = 'https://holodex.net/api/v2';
 
-// データベースから取得したオブジェクトをHolodex APIのJSON形式にマッピングするヘルパー
-function mapPrismaToHolodex(video: any) {
-  return {
-    id: video.id,
-    title: video.title,
-    status: video.status,
-    live_viewers: video.liveViewers,
-    start_scheduled: video.startScheduled ? video.startScheduled.toISOString() : null,
-    start_actual: video.startActual ? video.startActual.toISOString() : null,
-    duration: video.duration,
-    topic_id: video.topicId,
-    type: video.type,
-    channel: {
-      id: video.channel.id,
-      name: video.channel.name,
-      english_name: video.channel.englishName,
-      photo: video.channel.photo,
-      twitter: video.channel.twitter,
-      youtube_handle: video.channel.youtubeHandle,
-      group: video.channel.group,
-      description: video.channel.description,
-    }
-  };
+// 中継を許可するHolodex APIのパス（それ以外は404）
+const CHANNEL_ID_PATTERN = '[A-Za-z0-9_-]{1,64}';
+const ALLOWED_PATHS: RegExp[] = [
+  /^live$/,
+  /^videos$/,
+  new RegExp(`^channels/${CHANNEL_ID_PATTERN}$`),
+  new RegExp(`^channels/${CHANNEL_ID_PATTERN}/videos$`),
+];
+
+// 中継を許可するクエリパラメータ（apiKey などクライアント指定の認証情報は受け付けない）
+const ALLOWED_PARAMS = new Set(['org', 'limit', 'offset', 'status', 'type', 'channel_id', 'include', 'lang', 'max_upcoming_hours']);
+// Holodex API の limit 上限は 50
+const MAX_LIMIT = 50;
+
+// DBキャッシュの有効期限。短くして新着アーカイブの反映遅れを抑える
+const CACHE_TTL_MS = 30 * 60 * 1000;
+
+interface HolodexVideo {
+  id?: string;
+  title: string;
+  status: string;
+  type: string;
+  live_viewers?: number;
+  start_scheduled?: string;
+  start_actual?: string;
+  duration?: number;
+  topic_id?: string;
+  channel?: { id?: string };
 }
 
-// 外部APIから取得した過去動画データをDBに非同期でキャッシュ保存するヘルパー
-async function cacheVideosToDb(videos: any[]) {
+// 外部APIから取得した過去動画データをDBにまとめてキャッシュ保存する
+// （プロフィール情報は管理画面で編集された値を守るため上書きしない）
+async function cacheVideosToDb(videos: HolodexVideo[]) {
   try {
-    for (const video of videos) {
-      if (!video.id || !video.channel || !video.channel.id) continue;
-      
-      // 登録されているタレントかチェックします
-      const existingChannel = await prisma.channel.findUnique({
-        where: { id: video.channel.id }
-      });
+    const candidates = videos.filter(
+      (v): v is HolodexVideo & { id: string; channel: { id: string } } => !!v?.id && !!v?.channel?.id
+    );
+    if (candidates.length === 0) return;
 
-      if (!existingChannel) {
-        // 未登録のチャンネルの動画はキャッシュをスキップします
-        continue;
-      }
-      
-      // 1. チャンネルの更新（最新のプロフィール情報などを上書き）
-      await prisma.channel.update({
-        where: { id: video.channel.id },
-        data: {
-          name: video.channel.name,
-          englishName: video.channel.english_name || null,
-          photo: video.channel.photo || null,
-          twitter: video.channel.twitter || null,
-          youtubeHandle: video.channel.youtube_handle || null,
-          group: video.channel.group || null,
-          description: video.channel.description || null,
-        }
-      });
+    // 登録されているタレントの動画のみ対象にする
+    const registered = await prisma.channel.findMany({
+      where: { id: { in: [...new Set(candidates.map((v) => v.channel.id))] } },
+      select: { id: true },
+    });
+    const registeredIds = new Set(registered.map((c) => c.id));
+    const targets = candidates.filter((v) => registeredIds.has(v.channel.id));
+    if (targets.length === 0) return;
 
-      // 2. 動画のUPSERT
-      await prisma.video.upsert({
-        where: { id: video.id },
-        update: {
+    const now = new Date();
+    await prisma.$transaction(
+      targets.map((video) => {
+        const data = {
           title: video.title,
           channelId: video.channel.id,
           status: video.status,
@@ -71,24 +66,16 @@ async function cacheVideosToDb(videos: any[]) {
           duration: video.duration || null,
           topicId: video.topic_id || null,
           type: video.type,
-          cachedAt: new Date()
-        },
-        create: {
-          id: video.id,
-          title: video.title,
-          channelId: video.channel.id,
-          status: video.status,
-          liveViewers: video.live_viewers || null,
-          startScheduled: video.start_scheduled ? new Date(video.start_scheduled) : null,
-          startActual: video.start_actual ? new Date(video.start_actual) : null,
-          duration: video.duration || null,
-          topicId: video.topic_id || null,
-          type: video.type,
-          cachedAt: new Date()
-        }
-      });
-    }
-    console.log(`[Cache Sync] Successfully cached ${videos.length} videos into database.`);
+          cachedAt: now,
+        };
+        return prisma.video.upsert({
+          where: { id: video.id },
+          update: data,
+          create: { id: video.id, ...data },
+        });
+      })
+    );
+    console.log(`[Cache Sync] Successfully cached ${targets.length} videos into database.`);
   } catch (error) {
     console.error('Error caching videos to DB:', error);
   }
@@ -103,73 +90,56 @@ export async function GET(
     const apiPath = resolvedParams.path.join('/');
     const { searchParams } = new URL(request.url);
 
-    // クライアントからのAPIキーを取得（ヘッダー x-apikey または クエリから）
-    let apiKey = request.headers.get('x-apikey') || '';
-    if (!apiKey) {
-      apiKey = searchParams.get('apiKey') || '';
+    if (!ALLOWED_PATHS.some((pattern) => pattern.test(apiPath))) {
+      return NextResponse.json({ error: 'Not Found' }, { status: 404 });
     }
 
-    // クライアントから提供されず、サーバーの環境変数にある場合はそれを使う
-    if (!apiKey) {
-      apiKey = process.env.HOLODEX_API_KEY || '';
+    // 許可されたパラメータだけを引き継ぐ。limit は上限を設ける
+    const holodexParams = new URLSearchParams();
+    for (const [key, value] of searchParams) {
+      if (ALLOWED_PARAMS.has(key)) holodexParams.append(key, value);
     }
-
-    // Holodex API のパラメータから apiKey は除く
-    const holodexParams = new URLSearchParams(searchParams);
-    holodexParams.delete('apiKey');
+    const limitParam = holodexParams.get('limit');
+    if (limitParam !== null) {
+      const limit = Math.min(Math.max(parseInt(limitParam, 10) || 0, 1), MAX_LIMIT);
+      holodexParams.set('limit', String(limit));
+    }
 
     // --- DBキャッシュ処理 ---
-    const isPastStatus = searchParams.get('status') === 'past';
+    const isPastStatus = holodexParams.get('status') === 'past';
     const channelVideosMatch = apiPath.match(/^channels\/([^/]+)\/videos$/);
     const isVideosPath = apiPath === 'videos';
 
     if (isPastStatus && (isVideosPath || channelVideosMatch)) {
       try {
-        const channelId = channelVideosMatch ? channelVideosMatch[1] : searchParams.get('channel_id') || undefined;
-        const org = searchParams.get('org') || undefined;
-        const limit = parseInt(searchParams.get('limit') || '12', 10);
-        const offset = parseInt(searchParams.get('offset') || '0', 10);
+        const channelId = channelVideosMatch ? channelVideosMatch[1] : holodexParams.get('channel_id') || undefined;
+        const limit = Math.min(Math.max(parseInt(holodexParams.get('limit') || '12', 10) || 12, 1), MAX_LIMIT);
+        const offset = Math.max(parseInt(holodexParams.get('offset') || '0', 10) || 0, 0);
 
-        // キャッシュ有効期限（12時間）
-        const cacheThreshold = new Date(Date.now() - 12 * 60 * 60 * 1000);
-
-        const whereClause: any = {
+        const cacheThreshold = new Date(Date.now() - CACHE_TTL_MS);
+        const whereClause: Prisma.VideoWhereInput = {
           status: 'past',
-          cachedAt: { gte: cacheThreshold }
+          cachedAt: { gte: cacheThreshold },
         };
 
         if (channelId) {
           whereClause.channelId = channelId;
-        } else if (org === 'Specialite') {
-          // DBに保存されているSpecialiteメンバーの動画のみ抽出
-          const channels = await prisma.channel.findMany({
-            where: {
-              OR: [
-                { group: { contains: '期生' } },
-                { id: { startsWith: 'UC' } }
-              ]
-            },
-            select: { id: true }
-          });
-          const channelIds = channels.map(c => c.id);
-          if (channelIds.length > 0) {
-            whereClause.channelId = { in: channelIds };
-          }
         }
+        // channelId 指定が無い場合も、DB上の動画は必ず登録済みタレントのもの
 
         const cachedVideos = await prisma.video.findMany({
           where: whereClause,
           include: { channel: true },
           orderBy: { startActual: 'desc' },
           take: limit,
-          skip: offset
+          skip: offset,
         });
 
-        // キャッシュデータが存在する場合はDBから返却
-        if (cachedVideos.length > 0) {
-          const formattedData = cachedVideos.map(mapPrismaToHolodex);
+        // 要求件数ぶんが新鮮なキャッシュで揃っている場合のみDBから返却する
+        // （不足時は外部APIから取得し、新着アーカイブの取りこぼしを防ぐ）
+        if (cachedVideos.length >= limit) {
           console.log(`[Cache Hit] Serving ${cachedVideos.length} videos from database for path: ${apiPath}`);
-          return NextResponse.json(formattedData);
+          return NextResponse.json(cachedVideos.map(mapPrismaToHolodex));
         }
       } catch (dbError) {
         console.error('Database read error, falling back to direct API fetch:', dbError);
@@ -177,7 +147,6 @@ export async function GET(
     }
     // -----------------------
 
-    // キャッシュがない、またはキャッシュ無効の場合は通常通り外部APIから取得
     const holodexUrl = `${HOLODEX_BASE_URL}/${apiPath}${
       holodexParams.toString() ? `?${holodexParams.toString()}` : ''
     }`;
@@ -185,7 +154,8 @@ export async function GET(
     const headers: Record<string, string> = {
       'User-Agent': 'SpecialiteLiveHub/1.0',
     };
-
+    // 認証キーはサーバーの環境変数のみを使用する
+    const apiKey = process.env.HOLODEX_API_KEY || '';
     if (apiKey) {
       headers['X-APIKEY'] = apiKey;
     }
@@ -207,8 +177,7 @@ export async function GET(
 
     // 取得したデータが過去アーカイブ一覧（past）の場合、バックグラウンドでDBに保存する
     if (isPastStatus && Array.isArray(data) && data.length > 0) {
-      // 応答速度向上のため、awaitせずに非同期で保存処理を実行
-      cacheVideosToDb(data);
+      void cacheVideosToDb(data);
     }
 
     return NextResponse.json(data);

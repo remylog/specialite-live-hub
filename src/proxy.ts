@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // 認証が必要な管理系エンドポイントのパスパターン
 const PROTECTED_PATHS: { method: string; pattern: RegExp }[] = [
-  { method: 'POST', pattern: /^\/api\/talents\/sync$/ },
   { method: 'POST', pattern: /^\/api\/talents\/bulk-delete$/ },
   { method: 'PUT',  pattern: /^\/api\/talents\/bulk-group$/ },
   { method: 'POST', pattern: /^\/api\/talents$/ },
@@ -16,7 +15,18 @@ const PROTECTED_PATHS: { method: string; pattern: RegExp }[] = [
   { method: 'GET', pattern: /^\/api\/recommend\/logs$/ },
   { method: 'DELETE', pattern: /^\/api\/recommend\/logs$/ },
   { method: 'POST', pattern: /^\/api\/live\/test-discord$/ },
+  { method: 'POST', pattern: /^\/api\/live\/check$/ },
 ];
+
+// 文字列の定数時間比較（タイミング攻撃対策）
+function safeEqual(a: string, b: string): boolean {
+  const len = Math.max(a.length, b.length);
+  let diff = a.length ^ b.length;
+  for (let i = 0; i < len; i++) {
+    diff |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
+  }
+  return diff === 0;
+}
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -41,18 +51,22 @@ export function proxy(request: NextRequest) {
 
   const adminKey = process.env.ADMIN_SECRET_KEY;
 
-  // ADMIN_SECRET_KEY が未設定の場合は警告ログを出すが通す（開発環境の利便性）
+  // ADMIN_SECRET_KEY が未設定の場合は拒否する（フェイルクローズ）
+  // 認証を無効にしたい場合は BYPASS_ADMIN_AUTH=true を明示的に設定すること
   if (!adminKey) {
-    console.warn(
-      `[Auth Proxy] ADMIN_SECRET_KEY is not set. Allowing request to ${method} ${pathname} without auth. Set this env var in production.`
+    console.error(
+      `[Auth Proxy] ADMIN_SECRET_KEY is not set. Rejecting ${method} ${pathname}. Set ADMIN_SECRET_KEY, or BYPASS_ADMIN_AUTH=true if protected by an upstream proxy.`
     );
-    return NextResponse.next();
+    return NextResponse.json(
+      { error: 'サーバー側で ADMIN_SECRET_KEY が設定されていません。' },
+      { status: 503 }
+    );
   }
 
   // ヘッダーからAPIキーを取得して照合
   const providedKey = request.headers.get('x-admin-key');
 
-  if (!providedKey || providedKey !== adminKey) {
+  if (!providedKey || !safeEqual(providedKey, adminKey)) {
     return NextResponse.json(
       { error: '認証が必要です。x-admin-key ヘッダーに正しいキーを指定してください。' },
       { status: 401 }

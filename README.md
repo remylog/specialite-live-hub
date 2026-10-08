@@ -36,7 +36,7 @@
 - src/proxy.ts: 管理APIを保護するための認証プロキシ（旧middleware.ts）
 - prisma: データベーススキーマの定義（schema.prisma）
 - docker-compose.yml: App、DB、Cronコンテナの定義
-- entrypoint.sh: コンテナ起動時に自動で db push スキーマ同期を行うスクリプト
+- entrypoint.sh: コンテナ起動時に Prisma マイグレーション（migrate deploy）を自動適用するスクリプト
 
 ---
 
@@ -44,7 +44,7 @@
 
 ### 1. 環境変数の設定
 
-プロジェクトのルートディレクトリに .env ファイルを作成し、以下の項目を設定します。
+プロジェクトのルートディレクトリで `cp .env.example .env` を実行し、以下の項目を設定します。
 
 ```env
 HOLODEX_API_KEY=your_holodex_api_key
@@ -52,9 +52,12 @@ DISCORD_WEBHOOK_URL=your_discord_webhook_url
 GEMINI_API_KEY=your_gemini_api_key
 ADMIN_SECRET_KEY=your_admin_secret_key
 
+# 管理APIの認証: ADMIN_SECRET_KEY が未設定の場合、管理APIは 503 で拒否されます
 # Cloudflare Access等の前段の認証で保護する場合に true を設定（管理者キーの入力が不要になります）
 BYPASS_ADMIN_AUTH=true
 NEXT_PUBLIC_BYPASS_ADMIN_AUTH=true
+# 前段プロキシと同一ホストで直接アクセスを遮断したい場合（省略時は 0.0.0.0）
+# APP_BIND=127.0.0.1
 ```
 
 ### 2. Dockerによる起動
@@ -83,8 +86,7 @@ curl http://localhost:3000/api/health
 
 docker-compose.yml 内の cron サービスによって、以下のバックグラウンド処理が定期実行されます。
 
-- 毎時 4:00: すぺしゃりてメンバーの最新情報確認（現在はAPIダミー化につき空処理）
-- 毎時 4:30: AIによるおすすめ推薦情報の自動生成
+- 毎日 4:30: AIによるおすすめ推薦情報の自動生成
 - 5分ごと: 配信開始・終了状態の自動チェックおよびDiscordへの通知送信
 
 ---
@@ -110,7 +112,7 @@ git pull
 docker compose up -d --build
 ```
 
-コンテナ起動時に、entrypoint.sh 内の Prisma スキーマ同期処理（prisma db push）が自動的に走り、データベースのスキーマ構造も最新バージョンに自動で更新されます。
+コンテナ起動時に、entrypoint.sh 内で `prisma migrate deploy` が自動的に走り、未適用のマイグレーション（prisma/migrations）が順に適用されます。`db push` で作成済みの既存DBは、初回のみ 0_init が適用済みとして自動登録されます。スキーマを変更する際は、開発環境で `npx prisma migrate dev --name <名前>` を実行してマイグレーションをコミットしてください。
 
 ### 4. 起動ログの確認
 コンテナが正常に起動し、データベースのスキーマ同期が成功しているかを確認します。
@@ -120,7 +122,7 @@ docker compose ps
 docker compose logs -f app
 ```
 
-ログに「Schema sync complete. Starting Next.js server...」と表示されていれば完了です。
+ログに「Migration complete. Starting Next.js server...」と表示されていれば完了です。
 
 ### 5. 動作確認
 ヘルスチェックAPIを呼び出して正常稼働しているかチェックしてください。

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { Channel } from '@prisma/client';
 import prisma from '@/utils/db';
 
 // DBのChannelモデルからフロントエンド向け（Holodex Channel互換）にマッピング
-function mapDbChannelToResponse(c: any) {
+function mapDbChannelToResponse(c: Channel) {
   return {
     id: c.id,
     name: c.name,
@@ -12,19 +13,12 @@ function mapDbChannelToResponse(c: any) {
     youtube_handle: c.youtubeHandle || undefined,
     group: c.group || undefined,
     description: c.description || undefined,
-    subscriber_count: c.subscriberCount || 0,
-    subscriber_histories: c.subscriberHistories || [],
   };
 }
 
 export async function GET() {
   try {
-    let channels = await prisma.channel.findMany({
-      include: {
-        subscriberHistories: {
-          orderBy: { date: 'asc' }
-        }
-      },
+    const channels = await prisma.channel.findMany({
       orderBy: { createdAt: 'asc' }
     });
 

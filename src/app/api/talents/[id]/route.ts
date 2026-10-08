@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { Channel } from '@prisma/client';
 import prisma from '@/utils/db';
 
-function mapDbChannelToResponse(c: any) {
+function mapDbChannelToResponse(c: Channel) {
   return {
     id: c.id,
     name: c.name,

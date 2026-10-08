@@ -145,29 +145,38 @@ ${videoListString}
       return { success: false, count: 0 };
     }
 
-    // 既存のおすすめキャッシュを一旦全削除
-    await prisma.recommendation.deleteMany({});
-
-    // 抽出されたおすすめ動画をDBへ登録
-    let registeredCount = 0;
-    for (const rec of recommendations) {
-      // 該当動画が本当に存在するかチェック
-      const videoExists = await prisma.video.findUnique({
-        where: { id: rec.videoId },
-      });
-
-      if (videoExists) {
-        await prisma.recommendation.create({
-          data: {
-            videoId: rec.videoId,
-            comment: rec.comment,
-          },
-        });
-        registeredCount++;
-      } else {
-        console.warn(`[Gemini Sync] Video ID ${rec.videoId} selected by Gemini does not exist in DB.`);
+    // 実在する動画のみに絞り込む
+    const videoIds = recommendations.map((rec) => rec.videoId);
+    const existing = await prisma.video.findMany({
+      where: { id: { in: videoIds } },
+      select: { id: true },
+    });
+    const existingIds = new Set(existing.map((v) => v.id));
+    const seen = new Set<string>();
+    const validRecs = recommendations.filter((rec) => {
+      if (!existingIds.has(rec.videoId) || seen.has(rec.videoId)) {
+        console.warn(`[Gemini Sync] Video ID ${rec.videoId} selected by Gemini is not usable (missing in DB or duplicated).`);
+        return false;
       }
+      seen.add(rec.videoId);
+      return true;
+    });
+
+    if (validRecs.length === 0) {
+      const msg = 'Geminiが選んだ動画がDBに存在しないため、既存のおすすめを維持しました。';
+      console.warn(`[Gemini Sync] ${msg}`);
+      await saveLog('failed', msg, 0);
+      return { success: false, count: 0 };
     }
+
+    // 入れ替えはトランザクションで行い、途中失敗時に既存のおすすめが消えないようにする
+    await prisma.$transaction([
+      prisma.recommendation.deleteMany({}),
+      prisma.recommendation.createMany({
+        data: validRecs.map((rec) => ({ videoId: rec.videoId, comment: rec.comment })),
+      }),
+    ]);
+    const registeredCount = validRecs.length;
 
     const msg = `おすすめアーカイブを生成しました。件数: ${registeredCount}`;
     console.log(`[Gemini Sync] ${msg}`);
