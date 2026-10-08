@@ -273,7 +273,7 @@
 /* お気に入り管理 */
 .favGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr));
   gap: 1.25rem;
   margin-top: 1rem;
 }
@@ -592,6 +592,7 @@
   box-shadow: var(--shadow-pop);
   position: relative;
   max-height: 90vh;
+  max-height: 90dvh;
   overflow-y: auto;
 }
 
@@ -842,6 +843,14 @@
 }
 
 @media (max-width: 640px) {
+  .modalOverlay {
+    padding: 0.75rem;
+  }
+
+  .modalContent {
+    padding: 1.25rem;
+  }
+
   .formRow {
     flex-direction: column;
     gap: 1.25rem;
@@ -1028,7 +1037,7 @@
 /* グループ管理用スタイル */
 .groupGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr));
   gap: 1rem;
   margin-top: 1.5rem;
 }

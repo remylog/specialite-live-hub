@@ -133,3 +133,15 @@
   color: var(--text-secondary);
   font-weight: 500;
 }
+
+/* タッチ端末ではホバー演出を無効化 */
+@media (hover: none) {
+  .card:hover {
+    transform: none;
+    box-shadow: var(--shadow-pop);
+  }
+  .card:hover .thumbnail,
+  .card:hover .photoContainer {
+    transform: none;
+  }
+}

@@ -67,7 +67,7 @@
   flex-grow: 1;
   padding-left: 2rem;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
   gap: 1.5rem;
   width: 100%;
 }
@@ -78,7 +78,7 @@
 
 @media (min-width: 1024px) {
   .cardGroupSection {
-    grid-template-columns: repeat(3, minmax(280px, 1fr));
+    grid-template-columns: repeat(3, minmax(min(280px, 100%), 1fr));
   }
 }
 
