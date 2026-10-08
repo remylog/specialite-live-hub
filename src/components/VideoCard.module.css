@@ -145,3 +145,44 @@
     transform: none;
   }
 }
+
+/* 一覧に並んだとき、順番に現れる(hoverの浮き上がりを邪魔しないよう backwards のみ) */
+.card {
+  animation: cardIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+.card:nth-child(1) {
+  animation-delay: 45ms;
+}
+.card:nth-child(2) {
+  animation-delay: 90ms;
+}
+.card:nth-child(3) {
+  animation-delay: 135ms;
+}
+.card:nth-child(4) {
+  animation-delay: 180ms;
+}
+.card:nth-child(5) {
+  animation-delay: 225ms;
+}
+.card:nth-child(6) {
+  animation-delay: 270ms;
+}
+.card:nth-child(7) {
+  animation-delay: 315ms;
+}
+.card:nth-child(8) {
+  animation-delay: 360ms;
+}
+.card:nth-child(9) {
+  animation-delay: 405ms;
+}
+.card:nth-child(10) {
+  animation-delay: 450ms;
+}
+.card:nth-child(11) {
+  animation-delay: 495ms;
+}
+.card:nth-child(12) {
+  animation-delay: 540ms;
+}

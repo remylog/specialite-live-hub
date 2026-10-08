@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Navbar from "@/components/Navbar";
+import NavigationProgress from "@/components/NavigationProgress";
+import Splash from "@/components/Splash";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -38,8 +40,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja">
+    <html lang="ja" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
+        <Splash />
+        <NavigationProgress />
         <Navbar />
         <main>{children}</main>
       </body>

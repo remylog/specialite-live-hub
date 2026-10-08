@@ -209,6 +209,7 @@ export default function Archives() {
                     className={`btn btn-secondary ${styles.loadMoreBtn}`}
                     onClick={handleLoadMore}
                     disabled={loadingMore}
+                    aria-busy={loadingMore}
                   >
                     {loadingMore ? '読み込み中...' : 'もっと読み込む'}
                   </button>

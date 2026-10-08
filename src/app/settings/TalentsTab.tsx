@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { getFavorites, toggleFavorite } from '@/utils/holodex';
 import { Channel } from '@/types';
 import Avatar from '@/components/Avatar';
+import Loader from '@/components/Loader';
 import styles from './settings.module.css';
 import list from './talentList.module.css';
 import { getAdminHeaders } from './adminHeaders';
@@ -499,9 +500,10 @@ export default function TalentsTab() {
               className="btn btn-secondary"
               onClick={() => handleRefresh(filteredTalents)}
               disabled={!!refreshing || filteredTalents.length === 0}
+              aria-busy={!!refreshing}
             >
               {refreshing
-                ? `🔄 再取得中 ${refreshing.current}/${refreshing.total}`
+                ? `再取得中 ${refreshing.current}/${refreshing.total}`
                 : filteredTalents.length === talents.length
                   ? '🔄 全員を再取得'
                   : '🔄 表示中を再取得'}
@@ -510,7 +512,7 @@ export default function TalentsTab() {
         </div>
 
         {loadingTalents ? (
-          <div className={styles.loadingSpinner}>読み込み中...</div>
+          <Loader />
         ) : talents.length === 0 ? (
           <div className={list.empty}>登録されているタレントがいません。「タレントを追加」から登録してください。</div>
         ) : (
@@ -723,7 +725,7 @@ export default function TalentsTab() {
         </form>
 
         {loadingGroups ? (
-          <div className={styles.loadingSpinner}>読み込み中...</div>
+          <Loader />
         ) : dbGroups.length === 0 ? (
           <div className={styles.emptyState}>グループが登録されていません。</div>
         ) : (
@@ -885,7 +887,7 @@ export default function TalentsTab() {
                 >
                   キャンセル
                 </button>
-                <button type="submit" className="btn btn-primary" disabled={submitting}>
+                <button type="submit" className="btn btn-primary" disabled={submitting} aria-busy={submitting}>
                   {submitting ? '保存中...' : '保存する'}
                 </button>
               </div>
@@ -988,6 +990,7 @@ export default function TalentsTab() {
                   className="btn btn-primary" 
                   onClick={handleBulkAdd} 
                   disabled={bulkSubmitting || !bulkIds.trim()}
+                  aria-busy={bulkSubmitting}
                 >
                   {bulkSubmitting ? '処理中...' : '取得して追加'}
                 </button>

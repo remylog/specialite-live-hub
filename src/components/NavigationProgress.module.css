@@ -1,0 +1,78 @@
+.bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 3000;
+  height: 5px;
+  background: linear-gradient(90deg, var(--accent-pink), var(--accent-yellow), var(--accent-blue));
+  border-bottom: 2px solid var(--text-primary);
+  pointer-events: none;
+}
+
+/* 進行中: 80%付近までゆっくり進み、完了を待つ */
+.loading {
+  width: 0;
+  animation: progress 8s cubic-bezier(0.1, 0.6, 0.2, 1) forwards;
+}
+
+/* 完了: 一気に100%まで進んで消える */
+.done {
+  width: 100%;
+  animation: finish 0.5s ease-out forwards;
+}
+
+@keyframes progress {
+  to {
+    width: 85%;
+  }
+}
+
+@keyframes finish {
+  0% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar {
+    animation-duration: 0.01ms;
+  }
+}
+
+/* 全画面のロード画面(スプラッシュと同じ見た目) */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 143, 163, 0.35), transparent 55%),
+    radial-gradient(circle at 80% 80%, rgba(76, 201, 240, 0.35), transparent 55%),
+    var(--bg-primary);
+  animation: overlayIn 0.2s ease-out;
+}
+
+.overlayOut {
+  animation: overlayOut 0.45s ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes overlayIn {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes overlayOut {
+  to {
+    opacity: 0;
+  }
+}

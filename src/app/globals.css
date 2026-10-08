@@ -248,6 +248,28 @@ select {
   box-shadow: 6px 6px 0px #1e1f4b;
 }
 
+/* 処理中のボタン: aria-busy="true" を付けると文字の前にスピナーが回る */
+.btn[aria-busy='true']::before {
+  content: '';
+  width: 1em;
+  height: 1em;
+  flex-shrink: 0;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.btn[aria-busy='true'] {
+  cursor: progress;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* ページ見出し */
 .page-title {
   font-size: 2.25rem;
@@ -308,6 +330,45 @@ select {
   select,
   textarea {
     font-size: 16px !important;
+  }
+}
+
+/* ===== 画面遷移アニメーション ===== */
+
+/* ページ切り替え: 少し下から浮き上がりながらフェードイン */
+.page-transition {
+  animation: pageIn 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+/* 一覧のカードが順番に登場する(.card 側で nth-child ごとに遅延を付ける) */
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+}
+
+/* 画面遷移のロード画面が出ている間は、新しいページの入場アニメーションを待機させる */
+html[data-navigating] .page-transition,
+html[data-navigating] .page-transition * {
+  animation-play-state: paused !important;
+}
+
+/* 2回目以降の起動、および動きを減らす設定ではスプラッシュを出さない */
+html[data-splash='seen'] .splash {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash {
+    display: none;
   }
 }
 

@@ -211,8 +211,8 @@ export default function SystemTab() {
           環境変数「DISCORD_WEBHOOK_URL」宛てにテストメッセージを送信して疎通確認を行います。
         </p>
         <div className={styles.testBlock}>
-          <button type="button" className="btn btn-primary" onClick={handleTestDiscord} disabled={testingDiscord}>
-            {testingDiscord ? '📡 送信中...' : '📨 テスト通知を送信'}
+          <button type="button" className="btn btn-primary" onClick={handleTestDiscord} disabled={testingDiscord} aria-busy={testingDiscord}>
+            {testingDiscord ? '送信中...' : '📨 テスト通知を送信'}
           </button>
           <ResultBox result={discordResult} />
         </div>
@@ -225,8 +225,8 @@ export default function SystemTab() {
             昨日の配信データからイチオシ配信を選定します。通常は自動実行されますが、手動で更新もできます。
           </p>
           <div className={styles.testBlock}>
-            <button type="button" className="btn btn-primary" onClick={handleUpdateRecommend} disabled={updatingRecommend}>
-              {updatingRecommend ? '🤖 生成更新中...' : '🔄 今すぐ更新'}
+            <button type="button" className="btn btn-primary" onClick={handleUpdateRecommend} disabled={updatingRecommend} aria-busy={updatingRecommend}>
+              {updatingRecommend ? '生成更新中...' : '🔄 今すぐ更新'}
             </button>
             <ResultBox result={recommendResult} />
             <p className={styles.cardDesc}>
