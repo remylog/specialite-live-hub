@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getPastVideos, getTalents } from '@/utils/holodex';
 import { Channel, Video } from '@/types';
 import VideoCard from '@/components/VideoCard';
@@ -20,6 +20,9 @@ export default function Archives() {
   const [error, setError] = useState<string | null>(null);
 
   const LIMIT = 12;
+
+  // 絞り込みを素早く切り替えたとき、古いレスポンスで画面が上書きされないための通し番号
+  const requestIdRef = useRef(0);
 
   // 初期データおよびタレント一覧の取得
   useEffect(() => {
@@ -51,6 +54,7 @@ export default function Archives() {
   // フィルター変更時の動画再取得
   const handleFilterChange = async (talentId: string) => {
     setSelectedTalentId(talentId);
+    const requestId = ++requestIdRef.current;
     try {
       setLoading(true);
       setError(null);
@@ -65,20 +69,23 @@ export default function Archives() {
       }
       
       const data = await getPastVideos(params);
+      if (requestId !== requestIdRef.current) return;
       setVideos(data);
       setHasMore(data.length === LIMIT);
       setOffset(LIMIT);
     } catch (err) {
+      if (requestId !== requestIdRef.current) return;
       setError('アーカイブの絞り込みに失敗しました。');
       console.error(err);
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
   };
 
   // もっと読み込む
   const handleLoadMore = async () => {
     if (loadingMore) return;
+    const requestId = requestIdRef.current;
     try {
       setLoadingMore(true);
       
@@ -92,7 +99,10 @@ export default function Archives() {
       }
       
       const newData = await getPastVideos(params);
-      
+
+      // 読み込み中に絞り込みが変わっていたら結果を捨てる
+      if (requestId !== requestIdRef.current) return;
+
       if (newData.length < LIMIT) {
         setHasMore(false);
       }

@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/utils/db';
 import { sendLiveNotification } from '@/utils/discord';
 
 const HOLODEX_BASE_URL = 'https://holodex.net/api/v2';
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     const apiKey = process.env.HOLODEX_API_KEY || '';
     const headers: Record<string, string> = {
@@ -37,45 +37,29 @@ export async function POST(request: NextRequest) {
     });
     const registeredChannelIds = new Set(dbChannels.map(c => c.id));
 
-    // 配信中(live)のものだけを対象にします
-    const liveVideos = videos.filter(v => v.status === 'live');
+    // 配信中(live)で、登録済みタレントのものだけを対象にします
+    // （コラボ相手や未登録メンバーのライブはスキップ）
+    const liveVideos = videos.filter(
+      (v) => v.status === 'live' && v.id && v.channel?.id && registeredChannelIds.has(v.channel.id)
+    );
+
+    // 既存の動画ステータスをまとめて取得します（1本ずつ問い合わせない）
+    const existingVideos = await prisma.video.findMany({
+      where: { id: { in: liveVideos.map((v) => v.id) } },
+      select: { id: true, status: true },
+    });
+    const existingStatus = new Map(existingVideos.map((v) => [v.id, v.status]));
+
     let notifiedCount = 0;
 
     for (const video of liveVideos) {
-      if (!video.id || !video.channel || !video.channel.id) continue;
+      try {
+        // 新規配信開始の検知条件: DBに無い、もしくは 'upcoming' だった
+        const prevStatus = existingStatus.get(video.id);
+        const isNewLive = prevStatus === undefined || prevStatus === 'upcoming';
 
-      // 登録されていないチャンネルのライブはスキップします（コラボ相手や未登録メンバーなど）
-      if (!registeredChannelIds.has(video.channel.id)) {
-        continue;
-      }
-
-      // データベース上のステータスを確認します
-      const existingVideo = await prisma.video.findUnique({
-        where: { id: video.id }
-      });
-
-      // 新規配信開始の検知条件:
-      // - データベースに存在しない
-      // - もしくは、存在するがステータスが 'upcoming' である
-      const isNewLive = !existingVideo || existingVideo.status === 'upcoming';
-
-      // チャンネル情報の更新（最新のプロフィール情報などを上書き）
-      await prisma.channel.update({
-        where: { id: video.channel.id },
-        data: {
-          name: video.channel.name,
-          englishName: video.channel.english_name || null,
-          photo: video.channel.photo || null,
-          twitter: video.channel.twitter || null,
-          youtubeHandle: video.channel.yt_handle || video.channel.youtube_handle || null,
-          group: video.channel.group || null,
-        }
-      });
-
-      // 動画情報のUPSERT
-      await prisma.video.upsert({
-        where: { id: video.id },
-        update: {
+        // タレントのプロフィールは管理画面での編集値を守るため、ここでは上書きしません
+        const data = {
           title: video.title,
           status: video.status,
           liveViewers: video.live_viewers || null,
@@ -84,34 +68,25 @@ export async function POST(request: NextRequest) {
           duration: video.duration || null,
           topicId: video.topic_id || null,
           type: video.type,
-          cachedAt: new Date()
-        },
-        create: {
-          id: video.id,
-          title: video.title,
-          channelId: video.channel.id,
-          status: video.status,
-          liveViewers: video.live_viewers || null,
-          startScheduled: video.start_scheduled ? new Date(video.start_scheduled) : null,
-          startActual: video.start_actual ? new Date(video.start_actual) : null,
-          duration: video.duration || null,
-          topicId: video.topic_id || null,
-          type: video.type,
-          cachedAt: new Date()
-        }
-      });
-
-      // 新しく開始された配信であればDiscord通知を送信します
-      if (isNewLive) {
-        await sendLiveNotification({
-          id: video.id,
-          title: video.title,
-          channel: {
-            name: video.channel.name,
-            photo: video.channel.photo
-          }
+          cachedAt: new Date(),
+        };
+        await prisma.video.upsert({
+          where: { id: video.id },
+          update: data,
+          create: { id: video.id, channelId: video.channel.id, ...data },
         });
-        notifiedCount++;
+
+        if (isNewLive) {
+          await sendLiveNotification({
+            id: video.id,
+            title: video.title,
+            channel: { name: video.channel.name, photo: video.channel.photo },
+          });
+          notifiedCount++;
+        }
+      } catch (err) {
+        // 1本の失敗で残りの配信の処理を止めない
+        console.error(`Error processing live video ${video.id}:`, err);
       }
     }
 

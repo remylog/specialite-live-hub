@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { Video } from '@/types';
+import Avatar from './Avatar';
 import styles from './VideoModal.module.css';
 
 interface VideoModalProps {
@@ -36,7 +37,13 @@ export default function VideoModal({ video, onClose }: VideoModalProps) {
 
   return (
     <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+      <div
+        className={styles.modalContent}
+        role="dialog"
+        aria-modal="true"
+        aria-label={video.title}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* 閉じるボタン */}
         <button className={styles.closeBtn} onClick={onClose} aria-label="閉じる">
           <svg viewBox="0 0 24 24" className={styles.closeIcon}>
@@ -68,7 +75,7 @@ export default function VideoModal({ video, onClose }: VideoModalProps) {
           <h2 className={styles.title}>{video.title}</h2>
           
           <div className={styles.metaRow}>
-            <img src={video.channel.photo} alt={video.channel.name} className={styles.avatar} />
+            <Avatar photo={video.channel.photo} name={video.channel.name} className={styles.avatar} size={96} />
             <div className={styles.channelMeta}>
               <span className={styles.channelEnglishName}>{video.channel.english_name}</span>
               <p className={styles.description}>{video.channel.description || 'すぺしゃりて所属タレントの配信です。'}</p>

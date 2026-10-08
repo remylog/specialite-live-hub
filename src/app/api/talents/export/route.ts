@@ -18,7 +18,6 @@ export async function GET() {
       english_name: c.englishName || '',
       photo: c.photo || '',
       twitter: c.twitter || '',
-      youtube_handle: c.youtubeHandle || '',
       group: c.group || '',
       description: c.description || '',
     }));

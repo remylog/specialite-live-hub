@@ -16,9 +16,10 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  // silent=true は定期更新用(スケルトン表示に切り替えない)
+  const fetchData = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
       
       const [streamsData, recsRes] = await Promise.all([
@@ -39,7 +40,13 @@ export default function Home() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
+
+    // 表示中のみ1分ごとに配信状況を自動更新する
+    const refresh = setInterval(() => {
+      if (document.visibilityState === 'visible') fetchData(true);
+    }, 60000);
 
     // お気に入りの変更をリッスンするためのイベント
     const handleStorageChange = () => {
@@ -49,6 +56,7 @@ export default function Home() {
     window.addEventListener('favoritesChange', handleStorageChange);
 
     return () => {
+      clearInterval(refresh);
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('favoritesChange', handleStorageChange);
     };

@@ -13,46 +13,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1. 所属グループのインポート (upsert)
+    // 途中で失敗しても中途半端な状態にならないよう、1つのトランザクションで反映する
+    const clean = (v: unknown) => (typeof v === 'string' ? v.trim() || null : null);
+    const operations = [];
+
     for (const g of groups) {
-      if (!g.name || !g.name.trim()) continue;
-      const nameCleaned = g.name.trim();
-      await prisma.group.upsert({
-        where: { name: nameCleaned },
-        update: {},
-        create: { name: nameCleaned },
-      });
+      const name = clean(g?.name);
+      if (!name) continue;
+      operations.push(
+        prisma.group.upsert({ where: { name }, update: {}, create: { name } })
+      );
     }
 
-    // 2. タレント情報のインポート (upsert)
     for (const t of talents) {
-      if (!t.id || !t.id.trim() || !t.name || !t.name.trim()) continue;
-      const idCleaned = t.id.trim();
-      const nameCleaned = t.name.trim();
+      const id = clean(t?.id);
+      const name = clean(t?.name);
+      if (!id || !name) continue;
 
-      await prisma.channel.upsert({
-        where: { id: idCleaned },
-        update: {
-          name: nameCleaned,
-          englishName: t.english_name?.trim() || null,
-          photo: t.photo?.trim() || null,
-          twitter: t.twitter?.trim() || null,
-          youtubeHandle: t.youtube_handle?.trim() || null,
-          group: t.group?.trim() || null,
-          description: t.description?.trim() || null,
-        },
-        create: {
-          id: idCleaned,
-          name: nameCleaned,
-          englishName: t.english_name?.trim() || null,
-          photo: t.photo?.trim() || null,
-          twitter: t.twitter?.trim() || null,
-          youtubeHandle: t.youtube_handle?.trim() || null,
-          group: t.group?.trim() || null,
-          description: t.description?.trim() || null,
-        },
-      });
+      const data = {
+        name,
+        englishName: clean(t.english_name),
+        photo: clean(t.photo),
+        twitter: clean(t.twitter),
+        group: clean(t.group),
+        description: clean(t.description),
+      };
+      operations.push(
+        prisma.channel.upsert({ where: { id }, update: data, create: { id, ...data } })
+      );
     }
+
+    await prisma.$transaction(operations);
 
     return NextResponse.json({ success: true, message: 'インポートが完了しました。' });
   } catch (error) {

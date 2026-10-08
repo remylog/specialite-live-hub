@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { Channel } from '@/types';
+import Avatar from './Avatar';
 import styles from './TalentCard.module.css';
 
 interface TalentCardProps {
@@ -43,12 +44,7 @@ export default function TalentCard({ talent, isFavorite, onToggleFavorite }: Tal
 
       {/* タレント画像 */}
       <div className={styles.photoContainer}>
-        <img
-          src={talent.photo}
-          alt={talent.name}
-          className={styles.photo}
-          loading="lazy"
-        />
+        <Avatar photo={talent.photo} name={talent.name} className={styles.photo} size={256} />
       </div>
 
       {/* タレント詳細情報 */}
@@ -64,9 +60,8 @@ export default function TalentCard({ talent, isFavorite, onToggleFavorite }: Tal
 
         {/* SNS・外部リンク */}
         <div className={styles.links}>
-          {talent.youtube_handle && (
             <a
-              href={`https://www.youtube.com/${talent.youtube_handle}`}
+              href={`https://www.youtube.com/channel/${talent.id}`}
               target="_blank"
               rel="noopener noreferrer"
               className={styles.linkIcon}
@@ -77,7 +72,6 @@ export default function TalentCard({ talent, isFavorite, onToggleFavorite }: Tal
                 <path d="M23.498 6.163c-.272-1.022-1.074-1.826-2.099-2.099C19.548 3.5 12 3.5 12 3.5s-7.548 0-9.4.564C1.776 4.337.974 5.14.702 6.163.14 8.02.14 11.97.14 11.97s0 3.95.562 5.807c.272 1.022 1.074 1.826 2.099 2.099 1.852.564 9.4.564 9.4.564s7.548 0 9.4-.564c1.025-.273 1.827-1.077 2.099-2.099.562-1.857.562-5.807.562-5.807s0-3.95-.562-5.807zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
               </svg>
             </a>
-          )}
           {talent.twitter && (
             <a
               href={`https://twitter.com/${talent.twitter}`}

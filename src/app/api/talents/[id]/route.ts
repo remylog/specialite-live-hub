@@ -9,7 +9,6 @@ function mapDbChannelToResponse(c: Channel) {
     english_name: c.englishName || '',
     photo: c.photo || '',
     twitter: c.twitter || undefined,
-    youtube_handle: c.youtubeHandle || undefined,
     group: c.group || undefined,
     description: c.description || undefined,
   };
@@ -50,7 +49,7 @@ export async function PUT(
     const { id } = resolvedParams;
 
     const body = await request.json();
-    const { name, english_name, photo, twitter, youtube_handle, group, description } = body;
+    const { name, english_name, photo, twitter, group, description } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json({ error: '名前は必須です。' }, { status: 400 });
@@ -72,7 +71,6 @@ export async function PUT(
         englishName: english_name?.trim() || null,
         photo: photo?.trim() || null,
         twitter: twitter?.trim() || null,
-        youtubeHandle: youtube_handle?.trim() || null,
         group: group?.trim() || null,
         description: description?.trim() || null,
       }

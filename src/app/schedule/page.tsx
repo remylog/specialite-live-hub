@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getLiveAndUpcoming, getPastVideos } from '@/utils/holodex';
 import { Video } from '@/types';
 import VideoCard from '@/components/VideoCard';
@@ -10,28 +10,30 @@ import styles from './schedule.module.css';
 export default function Schedule() {
   const [rawVideos, setRawVideos] = useState<Video[]>([]);
   const [timeOffset, setTimeOffset] = useState<number>(0);
+  const timeOffsetRef = useRef(0);
   const [now, setNow] = useState<Date>(new Date());
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSchedule = async () => {
+  // silent=true は定期更新用(スケルトン表示に切り替えない)
+  const fetchSchedule = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError(null);
 
       // 今日の日付範囲を計算 (0:00:00 〜 23:59:59)
-      const currentNow = new Date(Date.now() + timeOffset);
+      const currentNow = new Date(Date.now() + timeOffsetRef.current);
       const startOfToday = new Date(currentNow.getFullYear(), currentNow.getMonth(), currentNow.getDate(), 0, 0, 0, 0);
       const endOfToday = new Date(currentNow.getFullYear(), currentNow.getMonth(), currentNow.getDate(), 23, 59, 59, 999);
 
       // 1. ライブ配信中 & スケジュールデータを取得
       const liveData = await getLiveAndUpcoming();
-      let liveList = liveData.live;
-      let upcomingList = liveData.upcoming;
+      const liveList = liveData.live;
+      const upcomingList = liveData.upcoming;
 
       // 2. 過去のアーカイブ動画を取得
-      let pastList = await getPastVideos({ limit: 50 });
+      const pastList = await getPastVideos({ limit: 50 });
 
       // 3. 今日の日付の範囲に収まる動画のみをフィルタリング
       const filterToday = (v: Video) => {
@@ -61,10 +63,16 @@ export default function Schedule() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchSchedule();
+
+    // 表示中のみ1分ごとに自動更新する
+    const refresh = setInterval(() => {
+      if (document.visibilityState === 'visible') fetchSchedule(true);
+    }, 60000);
 
     // NICT NTP時刻による補正のロード
     const syncTime = async () => {
@@ -79,6 +87,7 @@ export default function Schedule() {
           // ネットワーク遅延の半分を考慮して補正
           const estimatedNictNow = nictTime + (latency / 2);
           const offset = estimatedNictNow - Date.now();
+          timeOffsetRef.current = offset;
           setTimeOffset(offset);
           setNow(new Date(Date.now() + offset));
         }
@@ -88,7 +97,9 @@ export default function Schedule() {
     };
     
     syncTime();
-  }, []);
+
+    return () => clearInterval(refresh);
+  }, [fetchSchedule]);
 
   useEffect(() => {
     // 補正した現在時刻を1分ごとに更新
@@ -186,7 +197,7 @@ export default function Schedule() {
     <div className="app-container">
       <div className="page-title">
         <span><span>📅</span> 今日のスケジュール</span>
-        <button className="btn btn-secondary" onClick={fetchSchedule} style={{ fontSize: '0.85rem' }}>
+        <button className="btn btn-secondary" onClick={() => fetchSchedule()} style={{ fontSize: '0.85rem' }}>
           更新する
         </button>
       </div>
@@ -235,7 +246,6 @@ export default function Schedule() {
                   const videos = group.videos || [];
                   if (videos.length === 0) return null;
 
-                  const firstVideo = videos[0];
                   const isLive = videos.some((v) => v.status === 'live');
                   const isUpcoming = videos.some((v) => v.status === 'upcoming');
                   

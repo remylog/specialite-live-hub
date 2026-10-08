@@ -20,7 +20,6 @@ export function mapPrismaToHolodex(video: VideoWithChannel) {
       english_name: video.channel.englishName,
       photo: video.channel.photo,
       twitter: video.channel.twitter,
-      youtube_handle: video.channel.youtubeHandle,
       group: video.channel.group,
       description: video.channel.description,
     },

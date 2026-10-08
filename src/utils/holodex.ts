@@ -6,8 +6,13 @@ const FAVORITES_STORAGE_KEY = 'specialite_hub_favorites';
 // お気に入りタレントの管理
 export function getFavorites(): string[] {
   if (typeof window === 'undefined') return [];
-  const stored = localStorage.getItem(FAVORITES_STORAGE_KEY);
-  return stored ? JSON.parse(stored) : [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem(FAVORITES_STORAGE_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+  } catch {
+    // 壊れた値が入っていてもページを落とさない
+    return [];
+  }
 }
 
 export function toggleFavorite(channelId: string): string[] {

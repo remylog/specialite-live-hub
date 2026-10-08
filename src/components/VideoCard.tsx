@@ -1,6 +1,7 @@
 'use client';
 
 import { Video } from '@/types';
+import Avatar from './Avatar';
 import styles from './VideoCard.module.css';
 
 interface VideoCardProps {
@@ -47,7 +48,19 @@ export default function VideoCard({ video, onClick }: VideoCardProps) {
   };
 
   return (
-    <div className={`glass-panel ${styles.card}`} onClick={() => onClick(video)}>
+    <div
+      className={`glass-panel ${styles.card}`}
+      role="button"
+      tabIndex={0}
+      aria-label={`${video.channel.name}: ${video.title}`}
+      onClick={() => onClick(video)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick(video);
+        }
+      }}
+    >
       <div className={styles.thumbnailContainer}>
         <img src={thumbnailUrl} alt={video.title} className={styles.thumbnail} loading="lazy" />
         
@@ -96,12 +109,7 @@ export default function VideoCard({ video, onClick }: VideoCardProps) {
         </h3>
         
         <div className={styles.channelInfo}>
-          <img
-            src={video.channel.photo}
-            alt={video.channel.name}
-            className={styles.channelPhoto}
-            loading="lazy"
-          />
+          <Avatar photo={video.channel.photo} name={video.channel.name} className={styles.channelPhoto} size={96} />
           <div className={styles.channelTexts}>
             <span className={styles.channelName}>{video.channel.name}</span>
             <span className={styles.timeInfo}>

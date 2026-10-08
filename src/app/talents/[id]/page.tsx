@@ -6,6 +6,7 @@ import { getTalentDetail, getTalentVideos, getFavorites, toggleFavorite } from '
 import { Channel, Video } from '@/types';
 import VideoCard from '@/components/VideoCard';
 import VideoModal from '@/components/VideoModal';
+import Avatar from '@/components/Avatar';
 import styles from './detail.module.css';
 
 interface TalentDetailProps {
@@ -111,7 +112,7 @@ export default function TalentDetail({ params }: TalentDetailProps) {
       {/* プロフィールヘッダー */}
       <section className={`glass-panel ${styles.profileHeader}`}>
         <div className={styles.profileMain}>
-          <img src={talent.photo} alt={talent.name} className={styles.avatar} />
+          <Avatar photo={talent.photo} name={talent.name} className={styles.avatar} size={256} />
           
           <div className={styles.profileMeta}>
             <div className={styles.nameRow}>
@@ -137,9 +138,8 @@ export default function TalentDetail({ params }: TalentDetailProps) {
 
               {/* SNSリンク */}
               <div className={styles.snsLinks}>
-                {talent.youtube_handle && (
-                  <a
-                    href={`https://www.youtube.com/${talent.youtube_handle}`}
+                                  <a
+                    href={`https://www.youtube.com/channel/${talent.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={styles.snsLink}
@@ -147,7 +147,6 @@ export default function TalentDetail({ params }: TalentDetailProps) {
                   >
                     YouTube
                   </a>
-                )}
                 {talent.twitter && (
                   <a
                     href={`https://twitter.com/${talent.twitter}`}

@@ -4,7 +4,6 @@ export interface Channel {
   english_name: string;
   photo: string;
   twitter?: string;
-  youtube_handle?: string;
   group?: string;
   description?: string;
 }

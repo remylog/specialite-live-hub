@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 廃止済みの退避フォルダ
+    "Delete/**",
   ]),
 ]);
 

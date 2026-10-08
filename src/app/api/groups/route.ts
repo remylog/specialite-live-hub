@@ -12,7 +12,8 @@ export async function GET() {
     // データベースが空の場合は、初期データとしてデフォルトグループを自動登録します
     if (groups.length === 0) {
       await prisma.group.createMany({
-        data: DEFAULT_GROUPS.map(name => ({ name }))
+        data: DEFAULT_GROUPS.map(name => ({ name })),
+        skipDuplicates: true, // 同時アクセスでも重複エラーにしない
       });
       
       groups = await prisma.group.findMany({

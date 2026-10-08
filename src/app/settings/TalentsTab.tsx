@@ -1,12 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getFavorites, toggleFavorite } from '@/utils/holodex';
 import { Channel } from '@/types';
+import Avatar from '@/components/Avatar';
 import styles from './settings.module.css';
+import list from './talentList.module.css';
 import { getAdminHeaders } from './adminHeaders';
 
-const DEFAULT_PHOTO = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80';
+const NO_GROUP = '__none__';
+const FETCH_FAILED_MESSAGE = 'Holodexから情報が取得できませんでした';
 
 export default function TalentsTab() {
   const [talents, setTalents] = useState<Channel[]>([]);
@@ -25,8 +28,6 @@ export default function TalentsTab() {
   const [formEnglishName, setFormEnglishName] = useState('');
   const [formPhoto, setFormPhoto] = useState('');
   const [formTwitter, setFormTwitter] = useState('');
-  const [formYoutubeHandle, setFormYoutubeHandle] = useState('');
-  const [formGroup, setFormGroup] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -40,6 +41,10 @@ export default function TalentsTab() {
   // 一括追加モーダル用
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [bulkIds, setBulkIds] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [groupFilter, setGroupFilter] = useState('all');
+  const [refreshing, setRefreshing] = useState<{ current: number; total: number } | null>(null);
+  const [bulkGroup, setBulkGroup] = useState(''); // ''=取得した値をそのまま使う
   const [bulkProgress, setBulkProgress] = useState<{ total: number; current: number; success: number; failed: number } | null>(null);
   const [bulkLogs, setBulkLogs] = useState<{ id: string; status: 'success' | 'error'; message: string }[]>([]);
   const [bulkSubmitting, setBulkSubmitting] = useState(false);
@@ -83,15 +88,14 @@ export default function TalentsTab() {
   }, []);
 
   // モーダル操作
-  const openAddModal = () => {
+  // 自動取得に失敗したときの手動入力用
+  const openManualModal = (prefillId = '') => {
     setModalMode('add');
-    setFormId('');
+    setFormId(prefillId);
     setFormName('');
     setFormEnglishName('');
-    setFormPhoto(DEFAULT_PHOTO);
+    setFormPhoto('');
     setFormTwitter('');
-    setFormYoutubeHandle('');
-    setFormGroup(dbGroups[0]?.name || '1期生');
     setGroupSelectVal(dbGroups[0]?.name || '1期生');
     setCustomGroupVal('');
     setFormDescription('');
@@ -106,8 +110,6 @@ export default function TalentsTab() {
     setFormEnglishName(talent.english_name || '');
     setFormPhoto(talent.photo || '');
     setFormTwitter(talent.twitter || '');
-    setFormYoutubeHandle(talent.youtube_handle || '');
-    setFormGroup(talent.group || '');
     const groupNames = dbGroups.map(g => g.name);
     if (groupNames.includes(talent.group || '')) {
       setGroupSelectVal(talent.group || '');
@@ -119,46 +121,6 @@ export default function TalentsTab() {
     setFormDescription(talent.description || '');
     setFormError(null);
     setModalOpen(true);
-  };
-
-  const handleAutoFill = async () => {
-    if (!formId.trim()) {
-      setFormError('自動取得するには、まずチャンネルIDを入力してください。');
-      return;
-    }
-    try {
-      setSubmitting(true);
-      setFormError(null);
-      
-      const res = await fetch(`/api/holodex/channels/${formId.trim()}`);
-      
-      if (res.ok) {
-        const data = await res.json();
-        if (data.name) setFormName(data.name);
-        if (data.english_name) setFormEnglishName(data.english_name);
-        if (data.photo) setFormPhoto(data.photo);
-        if (data.twitter) setFormTwitter(data.twitter);
-        if (data.group) {
-          setFormGroup(data.group);
-          const groupNames = dbGroups.map(g => g.name);
-          if (groupNames.includes(data.group)) {
-            setGroupSelectVal(data.group);
-            setCustomGroupVal('');
-          } else {
-            setGroupSelectVal('custom');
-            setCustomGroupVal(data.group);
-          }
-        }
-        if (data.description) setFormDescription(data.description);
-      } else {
-        setFormError('タレント情報の取得に失敗しました。チャンネルIDが正しいか確認してください。');
-      }
-    } catch (err) {
-      setFormError('ネットワークエラーが発生しました。');
-      console.error(err);
-    } finally {
-      setSubmitting(false);
-    }
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -178,7 +140,6 @@ export default function TalentsTab() {
         english_name: formEnglishName.trim(),
         photo: formPhoto.trim(),
         twitter: formTwitter.trim(),
-        youtube_handle: formYoutubeHandle.trim(),
         group: groupSelectVal === 'custom' ? customGroupVal.trim() : groupSelectVal,
         description: formDescription.trim(),
       };
@@ -213,8 +174,9 @@ export default function TalentsTab() {
     }
   };
 
-  const openBulkModal = () => {
+  const openAddModal = () => {
     setBulkIds('');
+    setBulkGroup('');
     setBulkProgress(null);
     setBulkLogs([]);
     setBulkSubmitting(false);
@@ -244,7 +206,7 @@ export default function TalentsTab() {
         // 1. Holodexからデータ取得
         const fetchRes = await fetch(`/api/holodex/channels/${id}`);
         if (!fetchRes.ok) {
-          throw new Error('Holodexから情報が取得できませんでした');
+          throw new Error(FETCH_FAILED_MESSAGE);
         }
         const data = await fetchRes.json();
 
@@ -255,8 +217,7 @@ export default function TalentsTab() {
           english_name: data.english_name || '',
           photo: data.photo || '',
           twitter: data.twitter || '',
-          youtube_handle: '',
-          group: data.group || '未設定',
+          group: bulkGroup || data.group || '',
           description: data.description || '',
         };
 
@@ -345,12 +306,79 @@ export default function TalentsTab() {
   };
 
   // 複数選択用のハンドラー
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      setSelectedIds(talents.map(t => t.id));
-    } else {
-      setSelectedIds([]);
+  // Holodexから最新の情報を取得して更新する（所属グループは管理画面の設定を優先して変更しない）
+  const handleRefresh = async (targets: Channel[]) => {
+    if (targets.length === 0 || refreshing) return;
+    const label = targets.length === 1 ? targets[0].name : `${targets.length} 件のタレント`;
+    const confirmed = window.confirm(
+      `${label} の情報をHolodexの最新の値で更新します。\n名前・英語名・写真・Twitter・説明が上書きされます（所属グループは変更しません）。よろしいですか？`
+    );
+    if (!confirmed) return;
+
+    let updated = 0;
+    const failed: string[] = [];
+
+    for (let i = 0; i < targets.length; i++) {
+      const talent = targets[i];
+      setRefreshing({ current: i + 1, total: targets.length });
+      try {
+        const fetchRes = await fetch(`/api/holodex/channels/${talent.id}`);
+        if (!fetchRes.ok) throw new Error('fetch failed');
+        const data = await fetchRes.json();
+
+        // Holodex側が空の項目は既存の値を残す
+        const res = await fetch(`/api/talents/${talent.id}`, {
+          method: 'PUT',
+          headers: getAdminHeaders(),
+          body: JSON.stringify({
+            name: data.name || talent.name,
+            english_name: data.english_name || talent.english_name || '',
+            photo: data.photo || talent.photo || '',
+            twitter: data.twitter || talent.twitter || '',
+            group: talent.group || '',
+            description: data.description || talent.description || '',
+          }),
+        });
+        if (!res.ok) throw new Error('update failed');
+        updated++;
+      } catch {
+        failed.push(talent.name);
+      }
+      // APIレートリミット対策
+      if (i < targets.length - 1) await new Promise((resolve) => setTimeout(resolve, 500));
     }
+
+    setRefreshing(null);
+    await fetchTalents();
+    window.dispatchEvent(new Event('favoritesChange'));
+    alert(
+      `${updated} 件を更新しました。` +
+        (failed.length > 0 ? `\n取得または更新に失敗: ${failed.join('、')}` : '')
+    );
+  };
+
+  // 検索・グループで絞り込んだ一覧
+  const groupOptions = useMemo(
+    () => Array.from(new Set(talents.map((t) => t.group).filter((g): g is string => !!g))).sort(),
+    [talents]
+  );
+  const filteredTalents = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return talents.filter((t) => {
+      if (groupFilter === NO_GROUP ? !!t.group : groupFilter !== 'all' && t.group !== groupFilter) return false;
+      if (!q) return true;
+      return [t.name, t.english_name, t.id].some((v) => v?.toLowerCase().includes(q));
+    });
+  }, [talents, searchQuery, groupFilter]);
+
+  // 表示中(絞り込み後)のタレントだけを全選択/解除する
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const visible = new Set(filteredTalents.map((t) => t.id));
+    setSelectedIds((prev) =>
+      e.target.checked
+        ? Array.from(new Set([...prev, ...visible]))
+        : prev.filter((id) => !visible.has(id))
+    );
   };
 
   const handleSelectRow = (id: string) => {
@@ -449,160 +477,226 @@ export default function TalentsTab() {
 
   return (
     <>
-      <section className={`glass-panel ${styles.card}`}>
-        <div className={styles.sectionHeader}>
-          <div>
-            <h2 className={styles.cardTitle}>タレント情報管理</h2>
-            <p className={styles.cardDesc}>
-              登録されているタレントの追加、編集、削除ができます。
-            </p>
+      <section className={`glass-panel ${list.panel}`}>
+        <div className={list.head}>
+          <div className={list.headText}>
+            <h2 className={styles.cardTitle}>
+              タレント情報管理
+              <span className={list.count}>
+                {filteredTalents.length === talents.length
+                  ? `${talents.length}人`
+                  : `${filteredTalents.length} / ${talents.length}人`}
+              </span>
+            </h2>
+            <p className={styles.cardDesc}>登録されているタレントの追加、編集、削除ができます。</p>
           </div>
-          <div className={styles.headerActions}>
-            <button type="button" className="btn btn-secondary" onClick={openBulkModal}>
-              📦 一括追加
-            </button>
+          <div className={list.headActions}>
             <button type="button" className="btn btn-primary" onClick={openAddModal}>
-              ➕ 新規タレントを追加
+              ➕ タレントを追加
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => handleRefresh(filteredTalents)}
+              disabled={!!refreshing || filteredTalents.length === 0}
+            >
+              {refreshing
+                ? `🔄 再取得中 ${refreshing.current}/${refreshing.total}`
+                : filteredTalents.length === talents.length
+                  ? '🔄 全員を再取得'
+                  : '🔄 表示中を再取得'}
             </button>
           </div>
         </div>
 
-            {loadingTalents ? (
-              <div className={styles.loadingSpinner}>読み込み中...</div>
-            ) : talents.length === 0 ? (
-              <div className={styles.emptyState}>
-                登録されているタレント情報がありません。（APIをロードすると自動的にシードされます）
+        {loadingTalents ? (
+          <div className={styles.loadingSpinner}>読み込み中...</div>
+        ) : talents.length === 0 ? (
+          <div className={list.empty}>登録されているタレントがいません。「タレントを追加」から登録してください。</div>
+        ) : (
+          <>
+            <div className={list.toolbar}>
+              <div className={list.search}>
+                <input
+                  type="search"
+                  className={list.field}
+                  placeholder="名前・英語名・IDで検索"
+                  aria-label="タレントを検索"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
               </div>
-            ) : (
-              <>
-                {selectedIds.length > 0 && (
-                  <div className={styles.bulkActionBar}>
-                    <span className={styles.bulkActionText}>{selectedIds.length} 件選択中</span>
-                    <div className={styles.bulkActionButtons}>
-                      <select
-                        value={bulkTargetGroup}
-                        onChange={(e) => setBulkTargetGroup(e.target.value)}
-                        className={styles.bulkSelect}
-                      >
-                        <option value="">-- グループを一括変更 --</option>
-                        {dbGroups.map((g) => (
-                          <option key={g.id} value={g.name}>{g.name}</option>
-                        ))}
-                        <option value="null">所属なし</option>
-                      </select>
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        onClick={handleBulkGroupUpdate}
-                        disabled={!bulkTargetGroup || submitting}
-                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
-                      >
-                        変更を適用
-                      </button>
-                      <button
-                        type="button"
-                        className={`${styles.dangerOutlineBtn} btn`}
-                        onClick={handleBulkDelete}
-                        disabled={submitting}
-                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', marginLeft: '0.5rem' }}
-                      >
-                        🗑️ 一括削除
-                      </button>
-                    </div>
-                  </div>
-                )}
+              <select
+                className={`${list.field} ${list.groupFilter}`}
+                aria-label="所属グループで絞り込み"
+                value={groupFilter}
+                onChange={(e) => setGroupFilter(e.target.value)}
+              >
+                <option value="all">すべてのグループ</option>
+                {groupOptions.map((g) => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+                <option value={NO_GROUP}>所属なし</option>
+              </select>
+              <label className={list.selectAll}>
+                <input
+                  type="checkbox"
+                  onChange={handleSelectAll}
+                  checked={filteredTalents.length > 0 && filteredTalents.every((t) => selectedIds.includes(t.id))}
+                  disabled={filteredTalents.length === 0}
+                />
+                表示中を全選択
+              </label>
+            </div>
 
-                <div className={styles.tableWrapper}>
-                  <table className={styles.talentTable}>
-                    <thead>
-                      <tr>
-                        <th className={styles.checkboxCol}>
-                          <input
-                            type="checkbox"
-                            onChange={handleSelectAll}
-                            checked={talents.length > 0 && selectedIds.length === talents.length}
-                          />
-                        </th>
-                        <th>写真</th>
-                        <th>チャンネルID / 名前</th>
-                        <th>所属グループ</th>
-                        <th>Twitter / YouTube</th>
-                        <th>操作</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {talents.map((talent) => {
-                        return (
-                          <tr key={talent.id}>
-                            <td className={styles.checkboxCol}>
-                              <input
-                                type="checkbox"
-                                checked={selectedIds.includes(talent.id)}
-                                onChange={() => handleSelectRow(talent.id)}
-                              />
-                            </td>
-                            <td>
-                              {talent.photo ? (
-                                <img src={talent.photo} alt={talent.name} className={styles.tableAvatar} />
-                              ) : (
-                                <div className={styles.tableAvatarPlaceholder}>👤</div>
-                              )}
-                            </td>
-                            <td>
-                              <div className={styles.talentNameCol}>
-                                <span className={styles.tableNameText}>{talent.name}</span>
-                                <span className={styles.tableSubText}>{talent.english_name}</span>
-                                <code className={styles.tableCodeId}>{talent.id}</code>
-                              </div>
-                            </td>
-                            <td>
-                              <span className={styles.tableGroupBadge}>{talent.group || '未設定'}</span>
-                            </td>
-                            <td>
-                              <div className={styles.snsCol}>
-                                {talent.twitter && (
-                                  <a
-                                    href={`https://twitter.com/${talent.twitter}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className={styles.snsLink}
-                                  >
-                                    🐦 @{talent.twitter}
-                                  </a>
-                                )}
-                                {talent.youtube_handle && (
-                                  <span className={styles.youtubeHandleText}>
-                                    📺 {talent.youtube_handle}
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td>
-                              <div className={styles.rowActions}>
-                                <button
-                                  type="button"
-                                  className={`btn btn-secondary ${styles.actionBtnSmall}`}
-                                  onClick={() => openEditModal(talent)}
-                                >
-                                  ✏️ 編集
-                                </button>
-                                <button
-                                  type="button"
-                                  className={`btn btn-secondary ${styles.actionBtnSmall} ${styles.btnDanger}`}
-                                  onClick={() => handleDeleteTalent(talent)}
-                                >
-                                  🗑️ 削除
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+            {selectedIds.length > 0 && (
+              <div className={list.bulkBar}>
+                <span className={list.bulkText}>{selectedIds.length} 件選択中</span>
+                <div className={list.bulkButtons}>
+                  <select
+                    value={bulkTargetGroup}
+                    onChange={(e) => setBulkTargetGroup(e.target.value)}
+                    className={list.field}
+                    aria-label="グループを一括変更"
+                  >
+                    <option value="">-- グループを一括変更 --</option>
+                    {dbGroups.map((g) => (
+                      <option key={g.id} value={g.name}>{g.name}</option>
+                    ))}
+                    <option value="null">所属なし</option>
+                  </select>
+                  <button
+                    type="button"
+                    className={`btn btn-secondary ${list.compactBtn}`}
+                    onClick={handleBulkGroupUpdate}
+                    disabled={!bulkTargetGroup || submitting}
+                  >
+                    変更を適用
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-secondary ${list.compactBtn}`}
+                    onClick={() => handleRefresh(talents.filter((t) => selectedIds.includes(t.id)))}
+                    disabled={!!refreshing}
+                  >
+                    🔄 再取得
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn ${styles.dangerOutlineBtn} ${list.compactBtn}`}
+                    onClick={handleBulkDelete}
+                    disabled={submitting}
+                  >
+                    🗑️ 削除
+                  </button>
                 </div>
-              </>
+              </div>
             )}
+
+            {filteredTalents.length === 0 ? (
+              <div className={list.empty}>条件に一致するタレントがいません。</div>
+            ) : (
+              <div className={list.tableWrap}>
+                <table className={list.table}>
+                  <thead>
+                    <tr>
+                      <th aria-label="選択"></th>
+                      <th>タレント</th>
+                      <th>所属グループ</th>
+                      <th>リンク</th>
+                      <th aria-label="操作"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredTalents.map((talent) => {
+                      const selected = selectedIds.includes(talent.id);
+                      return (
+                        <tr key={talent.id} className={selected ? list.rowSelected : undefined}>
+                          <td className={list.cellCheck}>
+                            <input
+                              type="checkbox"
+                              className={list.checkbox}
+                              aria-label={`${talent.name}を選択`}
+                              checked={selected}
+                              onChange={() => handleSelectRow(talent.id)}
+                            />
+                          </td>
+                          <td className={list.cellTalent}>
+                            <div className={list.talent}>
+                              <Avatar photo={talent.photo} name={talent.name} className={list.avatar} size={96} />
+                              <div className={list.talentText}>
+                                <span className={list.name}>{talent.name}</span>
+                                {talent.english_name && <span className={list.english}>{talent.english_name}</span>}
+                                <code className={list.id} title={talent.id}>{talent.id}</code>
+                              </div>
+                            </div>
+                          </td>
+                          <td className={list.cellGroup}>
+                            <span className={`${list.groupBadge} ${talent.group ? '' : list.groupNone}`}>
+                              {talent.group || '未設定'}
+                            </span>
+                          </td>
+                          <td className={list.cellLinks}>
+                            <div className={list.links}>
+                              <a
+                                href={`https://www.youtube.com/channel/${talent.id}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className={list.link}
+                              >
+                                YouTube
+                              </a>
+                              {talent.twitter && (
+                                <a
+                                  href={`https://twitter.com/${talent.twitter}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className={list.link}
+                                >
+                                  @{talent.twitter}
+                                </a>
+                              )}
+                            </div>
+                          </td>
+                          <td className={list.cellActions}>
+                            <div className={list.actions}>
+                              <button
+                                type="button"
+                                className={`btn btn-secondary ${styles.actionBtnSmall} ${list.editBtn}`}
+                                onClick={() => openEditModal(talent)}
+                              >
+                                ✏️ 編集
+                              </button>
+                              <button
+                                type="button"
+                                className={list.iconBtn}
+                                onClick={() => handleRefresh([talent])}
+                                disabled={!!refreshing}
+                                title="Holodexから再取得"
+                                aria-label={`${talent.name}を再取得`}
+                              >
+                                🔄
+                              </button>
+                              <button
+                                type="button"
+                                className={`${list.iconBtn} ${list.iconBtnDanger}`}
+                                onClick={() => handleDeleteTalent(talent)}
+                                title="削除"
+                                aria-label={`${talent.name}を削除`}
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
       </section>
 
       {/* グループ管理 */}
@@ -651,12 +745,13 @@ export default function TalentsTab() {
         )}
       </details>
 
+      {/* 編集・手動追加モーダル */}
       {modalOpen && (
         <div className={styles.modalOverlay}>
           <div className={`glass-panel ${styles.modalContent}`}>
             <div className={styles.modalHeader}>
               <h3 className={styles.modalTitle}>
-                {modalMode === 'add' ? '✨ 新規タレントを追加' : '✏️ タレント情報を編集'}
+                {modalMode === 'add' ? '✍️ 手動でタレントを追加' : '✏️ タレント情報を編集'}
               </h3>
               <button type="button" className={styles.closeModalBtn} onClick={() => setModalOpen(false)}>
                 ×
@@ -666,37 +761,25 @@ export default function TalentsTab() {
             <form onSubmit={handleFormSubmit} className={styles.modalForm}>
               {formError && <div className={styles.formError}>{formError}</div>}
 
-              <div className={styles.formRow}>
-                <div className={styles.formField}>
-                  <label htmlFor="talent-id" className={styles.fieldLabel}>
-                    YouTube チャンネルID (必須)
-                  </label>
-                  <div className={styles.autoFillWrapper}>
-                    <input
-                      id="talent-id"
-                      type="text"
-                      className={styles.modalInput}
-                      placeholder="例: UC_kozuyanano_dummy"
-                      value={formId}
-                      onChange={(e) => setFormId(e.target.value)}
-                      disabled={modalMode === 'edit'}
-                    />
-                    {modalMode === 'add' && (
-                      <button
-                        type="button"
-                        className={styles.autoFillBtn}
-                        onClick={handleAutoFill}
-                        disabled={submitting || !formId.trim()}
-                      >
-                        🪄 自動取得
-                      </button>
-                    )}
-                  </div>
-                  {modalMode === 'edit' && (
-                    <span className={styles.fieldHint}>チャンネルIDは変更できません。</span>
-                  )}
-                </div>
+              <div className={styles.formField}>
+                <label htmlFor="talent-id" className={styles.fieldLabel}>
+                  YouTube チャンネルID (必須)
+                </label>
+                <input
+                  id="talent-id"
+                  type="text"
+                  className={styles.modalInput}
+                  placeholder="例: UCxxxxxxxxxxxxxxxxxxxxxx"
+                  value={formId}
+                  onChange={(e) => setFormId(e.target.value)}
+                  disabled={modalMode === 'edit'}
+                />
+                {modalMode === 'edit' && (
+                  <span className={styles.fieldHint}>チャンネルIDは変更できません。</span>
+                )}
+              </div>
 
+              <div className={styles.formRow}>
                 <div className={styles.formField}>
                   <label htmlFor="talent-name" className={styles.fieldLabel}>
                     タレント名 (必須)
@@ -708,22 +791,6 @@ export default function TalentsTab() {
                     placeholder="例: 小鳥谷なの"
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className={styles.formRow}>
-                <div className={styles.formField}>
-                  <label htmlFor="talent-eng" className={styles.fieldLabel}>
-                    英語名
-                  </label>
-                  <input
-                    id="talent-eng"
-                    type="text"
-                    className={styles.modalInput}
-                    placeholder="例: Nano Kozuya"
-                    value={formEnglishName}
-                    onChange={(e) => setFormEnglishName(e.target.value)}
                   />
                 </div>
 
@@ -742,14 +809,14 @@ export default function TalentsTab() {
                     ))}
                     <option value="custom">その他（直接入力）</option>
                   </select>
-                  
+
                   {groupSelectVal === 'custom' && (
                     <input
                       id="talent-group"
                       type="text"
                       className={styles.modalInput}
                       style={{ marginTop: '0.5rem' }}
-                      placeholder="グループ名を入力してください（例: 4期生）"
+                      placeholder="グループ名を入力（例: 4期生）"
                       value={customGroupVal}
                       onChange={(e) => setCustomGroupVal(e.target.value)}
                     />
@@ -757,25 +824,35 @@ export default function TalentsTab() {
                 </div>
               </div>
 
-              <div className={styles.formField}>
-                <label htmlFor="talent-photo" className={styles.fieldLabel}>
-                  写真URL (プロフィール画像)
-                </label>
-                <input
-                  id="talent-photo"
-                  type="text"
-                  className={styles.modalInput}
-                  placeholder="https://..."
-                  value={formPhoto}
-                  onChange={(e) => setFormPhoto(e.target.value)}
-                />
-              </div>
+              <details className={styles.advancedDetails}>
+                <summary className={styles.advancedSummary}>詳細設定（英語名・写真・Twitter・説明）</summary>
 
-              <div className={styles.formRow}>
                 <div className={styles.formField}>
-                  <label htmlFor="talent-twitter" className={styles.fieldLabel}>
-                    Twitter ID (@抜き)
-                  </label>
+                  <label htmlFor="talent-eng" className={styles.fieldLabel}>英語名</label>
+                  <input
+                    id="talent-eng"
+                    type="text"
+                    className={styles.modalInput}
+                    placeholder="例: Nano Kozuya"
+                    value={formEnglishName}
+                    onChange={(e) => setFormEnglishName(e.target.value)}
+                  />
+                </div>
+
+                <div className={styles.formField}>
+                  <label htmlFor="talent-photo" className={styles.fieldLabel}>写真URL</label>
+                  <input
+                    id="talent-photo"
+                    type="text"
+                    className={styles.modalInput}
+                    placeholder="https://...（空欄なら頭文字アイコン）"
+                    value={formPhoto}
+                    onChange={(e) => setFormPhoto(e.target.value)}
+                  />
+                </div>
+
+                <div className={styles.formField}>
+                  <label htmlFor="talent-twitter" className={styles.fieldLabel}>Twitter ID (@抜き)</label>
                   <input
                     id="talent-twitter"
                     type="text"
@@ -787,33 +864,17 @@ export default function TalentsTab() {
                 </div>
 
                 <div className={styles.formField}>
-                  <label htmlFor="talent-yt" className={styles.fieldLabel}>
-                    YouTube ユーザー名 (ハンドル)
-                  </label>
-                  <input
-                    id="talent-yt"
-                    type="text"
-                    className={styles.modalInput}
-                    placeholder="例: @nano_kozuya"
-                    value={formYoutubeHandle}
-                    onChange={(e) => setFormYoutubeHandle(e.target.value)}
+                  <label htmlFor="talent-desc" className={styles.fieldLabel}>説明 / プロフィール</label>
+                  <textarea
+                    id="talent-desc"
+                    className={styles.modalTextarea}
+                    placeholder="タレントの紹介文..."
+                    rows={3}
+                    value={formDescription}
+                    onChange={(e) => setFormDescription(e.target.value)}
                   />
                 </div>
-              </div>
-
-              <div className={styles.formField}>
-                <label htmlFor="talent-desc" className={styles.fieldLabel}>
-                  説明 / プロフィール
-                </label>
-                <textarea
-                  id="talent-desc"
-                  className={styles.modalTextarea}
-                  placeholder="タレントの紹介文..."
-                  rows={3}
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                />
-              </div>
+              </details>
 
               <div className={styles.modalActions}>
                 <button
@@ -837,7 +898,7 @@ export default function TalentsTab() {
         <div className={styles.modalOverlay}>
           <div className={`glass-panel ${styles.modalContent}`}>
             <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>📦 タレント一括追加</h3>
+              <h3 className={styles.modalTitle}>➕ タレントを追加</h3>
               <button type="button" className={styles.closeModalBtn} onClick={() => !bulkSubmitting && setBulkModalOpen(false)}>
                 ×
               </button>
@@ -845,12 +906,28 @@ export default function TalentsTab() {
             
             <div className={styles.modalForm}>
               <p className={styles.cardDesc} style={{ marginBottom: '0.5rem' }}>
-                複数のYouTubeチャンネルIDを改行またはカンマ区切りで入力してください。
+                YouTubeチャンネルIDを入力してください（複数は改行またはカンマ区切り）。名前・写真・Twitterなどは自動で取得します。
               </p>
               
+              <div className={styles.formField}>
+                <label htmlFor="add-group" className={styles.fieldLabel}>所属グループ</label>
+                <select
+                  id="add-group"
+                  className={styles.modalInput}
+                  value={bulkGroup}
+                  onChange={(e) => setBulkGroup(e.target.value)}
+                  disabled={bulkSubmitting}
+                >
+                  <option value="">自動（取得した値を使う）</option>
+                  {dbGroups.map((g) => (
+                    <option key={g.id} value={g.name}>{g.name}</option>
+                  ))}
+                </select>
+              </div>
+
               <textarea
                 className={styles.modalTextarea}
-                style={{ minHeight: '150px' }}
+                style={{ minHeight: '120px' }}
                 placeholder="UC...&#10;UC..."
                 value={bulkIds}
                 onChange={(e) => setBulkIds(e.target.value)}
@@ -878,6 +955,18 @@ export default function TalentsTab() {
                       {bulkLogs.map((log, i) => (
                         <div key={i} className={log.status === 'success' ? styles.successLog : styles.errorLog}>
                           [{log.id}] {log.message}
+                          {log.status === 'error' && log.message === FETCH_FAILED_MESSAGE && (
+                            <button
+                              type="button"
+                              className={styles.logRetryBtn}
+                              onClick={() => {
+                                setBulkModalOpen(false);
+                                openManualModal(log.id);
+                              }}
+                            >
+                              手動で入力
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -900,7 +989,7 @@ export default function TalentsTab() {
                   onClick={handleBulkAdd} 
                   disabled={bulkSubmitting || !bulkIds.trim()}
                 >
-                  {bulkSubmitting ? '処理中...' : '一括取得して追加'}
+                  {bulkSubmitting ? '処理中...' : '取得して追加'}
                 </button>
               </div>
             </div>

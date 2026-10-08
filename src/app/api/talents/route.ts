@@ -10,7 +10,6 @@ function mapDbChannelToResponse(c: Channel) {
     english_name: c.englishName || '',
     photo: c.photo || '',
     twitter: c.twitter || undefined,
-    youtube_handle: c.youtubeHandle || undefined,
     group: c.group || undefined,
     description: c.description || undefined,
   };
@@ -36,7 +35,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, name, english_name, photo, twitter, youtube_handle, group, description } = body;
+    const { id, name, english_name, photo, twitter, group, description } = body;
 
     if (!id || !id.trim()) {
       return NextResponse.json({ error: 'チャンネルIDは必須です。' }, { status: 400 });
@@ -45,9 +44,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '名前は必須です。' }, { status: 400 });
     }
 
-    // 重複チェック
+    // 重複チェック（保存時と同じくトリムしたIDで確認する）
     const existing = await prisma.channel.findUnique({
-      where: { id }
+      where: { id: id.trim() }
     });
 
     if (existing) {
@@ -61,7 +60,6 @@ export async function POST(request: NextRequest) {
         englishName: english_name?.trim() || null,
         photo: photo?.trim() || null,
         twitter: twitter?.trim() || null,
-        youtubeHandle: youtube_handle?.trim() || null,
         group: group?.trim() || null,
         description: description?.trim() || null,
       }

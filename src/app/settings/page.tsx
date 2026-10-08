@@ -16,7 +16,10 @@ export default function Settings() {
         <span><span>⚙️</span> アプリケーション管理設定</span>
       </div>
 
-      <div className={styles.tabs} role="tablist">
+      <div
+        className={`${styles.tabs} ${activeTab === 'talents' ? styles.wide : ''}`}
+        role="tablist"
+      >
         <button
           role="tab"
           aria-selected={activeTab === 'system'}
@@ -35,7 +38,7 @@ export default function Settings() {
         </button>
       </div>
 
-      <div className={styles.container}>
+      <div className={`${styles.container} ${activeTab === 'talents' ? styles.wide : ''}`}>
         {activeTab === 'system' ? <SystemTab /> : <TalentsTab />}
       </div>
     </div>

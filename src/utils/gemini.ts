@@ -102,10 +102,12 @@ export async function generateYesterdayRecommendations(): Promise<{ success: boo
 ${videoListString}
 `;
 
-    const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+    const response = await fetch(GEMINI_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        // URLに載せるとログやエラー文に残るため、ヘッダーで渡す
+        'x-goog-api-key': apiKey,
       },
       body: JSON.stringify({
         contents: [
