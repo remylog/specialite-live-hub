@@ -581,6 +581,7 @@
   z-index: 1000;
   padding: 1.5rem;
   backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .modalContent {

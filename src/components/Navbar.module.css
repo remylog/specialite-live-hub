@@ -138,6 +138,14 @@
 
 /* スマホ: 上部はロゴのみ、メニューは親指で届く下部タブバーに */
 @media (max-width: 640px) {
+  /* backdrop-filter を持つ祖先は position: fixed の子の containing block になる
+     (Safari)。下部タブバーが header 基準で上に出てしまうため、ここでは外す */
+  .header {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: #fff;
+  }
+
   .navbarContainer {
     justify-content: center;
     padding: 0.6rem 1rem;

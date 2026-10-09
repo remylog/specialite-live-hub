@@ -270,6 +270,7 @@
 .aiCard {
   background: rgba(255, 255, 255, 0.8);
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 2px solid var(--text-primary);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-pop);
